@@ -1,0 +1,7 @@
+# Backup data
+backup/
+backup_DB/
+backup_Data/
+
+# Dependency
+vendor/
