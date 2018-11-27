@@ -1,12 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/ndidplatform/migration-tools/utils"
+	did "github.com/ndidplatform/smart-contract/abci/did/v1"
+	"github.com/tendermint/iavl"
+	dbm "github.com/tendermint/tendermint/libs/db"
 )
 
 var (
@@ -41,102 +46,100 @@ func main() {
 		panic(err)
 	}
 
-	// /Users/oatsaysai/go/src/github.com/ndidplatform/smart-contract/config/tendermint/IdP/data/blockstore.db
+	blockStatus := utils.GetBlockStatus(backupBlockNumber)
+	chainID := blockStatus.Result.Block.Header.ChainID
+	latestBlockHeight := blockStatus.Result.Block.Header.Height
+	latestBlockHash := blockStatus.Result.BlockMeta.BlockID.Hash
+	latestAppHash := blockStatus.Result.Block.Header.AppHash
+	fmt.Printf("--- Chain info at block: %s ---\n", backupBlockNumberStr)
+	fmt.Println("Chain ID: " + chainID)
+	fmt.Println("Latest Block Height: " + latestBlockHeight)
+	fmt.Println("Latest Block Hash: " + latestBlockHash)
+	fmt.Println("Latest App Hash: " + latestAppHash)
 
-	// blockStatus := utils.GetBlockStatus(backupBlockNumber)
-	// chainID := blockStatus.Result.Block.Header.ChainID
-	// latestBlockHeight := blockStatus.Result.Block.Header.Height
-	// latestBlockHash := blockStatus.Result.BlockMeta.BlockID.Hash
-	// latestAppHash := blockStatus.Result.Block.Header.AppHash
-	// fmt.Printf("--- Chain info at block: %s ---\n", backupBlockNumberStr)
-	// fmt.Println("Chain ID: " + chainID)
-	// fmt.Println("Latest Block Height: " + latestBlockHeight)
-	// fmt.Println("Latest Block Hash: " + latestBlockHash)
-	// fmt.Println("Latest App Hash: " + latestAppHash)
+	// Copy stateDB dir
+	copyDir(dbDir, backupDbDir)
 
-	// // Copy stateDB dir
-	// copyDir(dbDir, backupDbDir)
-
-	// // Save kv from backup DB
-	// db := dbm.NewDB(dbName, "leveldb", backupDbDir)
-	// oldTree := iavl.NewMutableTree(db, 0)
-	// oldTree.LoadVersion(backupBlockNumber)
-	// fmt.Println(oldTree.Version())
-	// tree, _ := oldTree.GetImmutable(backupBlockNumber)
-	// _, ndidNodeID := tree.Get(prefixKey([]byte("MasterNDID")))
-	// tree.Iterate(func(key []byte, value []byte) (stop bool) {
-	// 	// Validator
-	// 	if strings.Contains(string(key), "val:") {
-	// 		var kv did.KeyValue
-	// 		kv.Key = key
-	// 		kv.Value = value
-	// 		jsonStr, err := json.Marshal(kv)
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-	// 		fWriteLn(backupValidatorFileName, jsonStr, backupDataDir)
-	// 		return false
-	// 	}
-	// 	// Chain history info
-	// 	if strings.Contains(string(key), "ChainHistoryInfo") {
-	// 		var chainHistory ChainHistory
-	// 		if string(value) != "" {
-	// 			err := json.Unmarshal([]byte(value), &chainHistory)
-	// 			if err != nil {
-	// 				panic(err)
-	// 			}
-	// 		}
-	// 		var prevChain ChainHistoryDetail
-	// 		prevChain.ChainID = chainID
-	// 		prevChain.LatestBlockHeight = latestBlockHeight
-	// 		prevChain.LatestBlockHash = latestBlockHash
-	// 		prevChain.LatestAppHash = latestAppHash
-	// 		chainHistory.Chains = append(chainHistory.Chains, prevChain)
-	// 		chainHistoryStr, err := json.Marshal(chainHistory)
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
-	// 		fWriteLn(chainHistoryFileName, chainHistoryStr, backupDataDir)
-	// 		return false
-	// 	}
-	// 	if strings.Contains(string(key), string(ndidNodeID)) {
-	// 		return false
-	// 	}
-	// 	if strings.Contains(string(key), "MasterNDID") {
-	// 		return false
-	// 	}
-	// 	if strings.Contains(string(key), "InitState") {
-	// 		return false
-	// 	}
-	// 	// If key is last block key, not save to backup file
-	// 	if strings.Contains(string(key), "lastBlock") {
-	// 		return false
-	// 	}
-	// 	var kv did.KeyValue
-	// 	kv.Key = key
-	// 	kv.Value = value
-	// 	jsonStr, err := json.Marshal(kv)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	fWriteLn(backupDataFileName, jsonStr, backupDataDir)
-	// 	return false
-	// })
-	// // If key do not have "ChainHistoryInfo" key, create file
-	// if !tree.Has(prefixKey([]byte("ChainHistoryInfo"))) {
-	// 	var chainHistory ChainHistory
-	// 	var prevChain ChainHistoryDetail
-	// 	prevChain.ChainID = chainID
-	// 	prevChain.LatestBlockHeight = latestBlockHeight
-	// 	prevChain.LatestBlockHash = latestBlockHash
-	// 	prevChain.LatestAppHash = latestAppHash
-	// 	chainHistory.Chains = append(chainHistory.Chains, prevChain)
-	// 	chainHistoryStr, err := json.Marshal(chainHistory)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	fWriteLn(chainHistoryFileName, chainHistoryStr, backupDataDir)
-	// }
+	// Save kv from backup DB
+	db := dbm.NewDB(dbName, "leveldb", backupDbDir)
+	oldTree := iavl.NewMutableTree(db, 0)
+	oldTree.LoadVersion(backupBlockNumber)
+	fmt.Println(oldTree.Version())
+	tree, _ := oldTree.GetImmutable(backupBlockNumber)
+	_, ndidNodeID := tree.Get(prefixKey([]byte("MasterNDID")))
+	tree.Iterate(func(key []byte, value []byte) (stop bool) {
+		// Validator
+		if strings.Contains(string(key), "val:") {
+			var kv did.KeyValue
+			kv.Key = key
+			kv.Value = value
+			jsonStr, err := json.Marshal(kv)
+			if err != nil {
+				panic(err)
+			}
+			fWriteLn(backupValidatorFileName, jsonStr, backupDataDir)
+			return false
+		}
+		// Chain history info
+		if strings.Contains(string(key), "ChainHistoryInfo") {
+			var chainHistory ChainHistory
+			if string(value) != "" {
+				err := json.Unmarshal([]byte(value), &chainHistory)
+				if err != nil {
+					panic(err)
+				}
+			}
+			var prevChain ChainHistoryDetail
+			prevChain.ChainID = chainID
+			prevChain.LatestBlockHeight = latestBlockHeight
+			prevChain.LatestBlockHash = latestBlockHash
+			prevChain.LatestAppHash = latestAppHash
+			chainHistory.Chains = append(chainHistory.Chains, prevChain)
+			chainHistoryStr, err := json.Marshal(chainHistory)
+			if err != nil {
+				panic(err)
+			}
+			fWriteLn(chainHistoryFileName, chainHistoryStr, backupDataDir)
+			return false
+		}
+		if strings.Contains(string(key), string(ndidNodeID)) {
+			return false
+		}
+		if strings.Contains(string(key), "MasterNDID") {
+			return false
+		}
+		if strings.Contains(string(key), "InitState") {
+			return false
+		}
+		// If key is last block key, not save to backup file
+		if strings.Contains(string(key), "lastBlock") {
+			return false
+		}
+		var kv did.KeyValue
+		kv.Key = key
+		kv.Value = value
+		jsonStr, err := json.Marshal(kv)
+		if err != nil {
+			panic(err)
+		}
+		fWriteLn(backupDataFileName, jsonStr, backupDataDir)
+		return false
+	})
+	// If key do not have "ChainHistoryInfo" key, create file
+	if !tree.Has(prefixKey([]byte("ChainHistoryInfo"))) {
+		var chainHistory ChainHistory
+		var prevChain ChainHistoryDetail
+		prevChain.ChainID = chainID
+		prevChain.LatestBlockHeight = latestBlockHeight
+		prevChain.LatestBlockHash = latestBlockHash
+		prevChain.LatestAppHash = latestAppHash
+		chainHistory.Chains = append(chainHistory.Chains, prevChain)
+		chainHistoryStr, err := json.Marshal(chainHistory)
+		if err != nil {
+			panic(err)
+		}
+		fWriteLn(chainHistoryFileName, chainHistoryStr, backupDataDir)
+	}
 }
 
 func copyDir(source string, dest string) (err error) {
