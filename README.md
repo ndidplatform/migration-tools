@@ -21,7 +21,6 @@
  
     - `BLOCK_NUMBER` : Backup block number
     - `DB_NAME` : Source directory path for copy stateDB
-    - `BACKUP_DB_DIR` : Destination directory path for copy stateDB
     - `BACKUP_DATA_FILE` : File path for save data
     - `BACKUP_VALIDATORS_FILE` : File path for save validators data
     - `CHAIN_HISTORY_FILE` : File path for save chain history data
