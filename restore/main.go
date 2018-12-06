@@ -82,6 +82,10 @@ func main() {
 	}
 	if count > 0 {
 		setInitData(param, ndidPrivKey, ndidID)
+		fmt.Print("Number of kv in param: ")
+		fmt.Println(count)
+		fmt.Print("Total number of kv: ")
+		fmt.Println(nTx)
 	}
 	endInit(ndidPrivKey, ndidID)
 }
