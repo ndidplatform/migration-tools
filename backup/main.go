@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -149,6 +150,9 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 		}
 		fWriteLn(backupDataFileName, jsonStr, backupDataDir)
 		totalKV++
+		if math.Mod(float64(totalKV), 100) == 0.0 {
+			fmt.Printf("Total number of saved kv: %d\n", totalKV)
+		}
 		return false
 	})
 	// If key do not have "ChainHistoryInfo" key, create file
@@ -162,6 +166,7 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 		fWriteLn(chainHistoryFileName, chainHistoryStr, backupDataDir)
 		totalKV++
 	}
+	fmt.Printf("Total number of saved kv: %d\n", totalKV)
 	fmt.Printf("Total number of kv: %d\n", totalKV)
 }
 
