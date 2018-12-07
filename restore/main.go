@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"time"
 
 	"github.com/ndidplatform/migration-tools/utils"
 	did "github.com/ndidplatform/smart-contract/abci/did/v1"
@@ -147,7 +148,15 @@ func setInitData(param did.SetInitDataParam, ndidKey *rsa.PrivateKey, ndidID str
 	signature, err := rsa.SignPKCS1v15(rand.Reader, ndidKey, newhash, hashed)
 	result, _ := utils.CallTendermint([]byte(fnName), paramJSON, []byte(nonce), signature, []byte(ndidID))
 	resultObj, _ := result.(utils.ResponseTx)
-	fmt.Println(resultObj.Result.DeliverTx.Log)
+	fmt.Printf("CheckTx log: %s\n", resultObj.Result.CheckTx.Log)
+	fmt.Printf("DeliverTx log: %s\n", resultObj.Result.DeliverTx.Log)
+
+	if resultObj.Result.DeliverTx.Log != "success" {
+		// pause 3 sec and retry again
+		fmt.Printf("Retry ...\n")
+		time.Sleep(3 * time.Second)
+		setInitData(param, ndidKey, ndidID)
+	}
 }
 
 func endInit(ndidKey *rsa.PrivateKey, ndidID string) {
