@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -9,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gogo/protobuf/proto"
+	"github.com/ndidplatform/migration-tools/protos/data"
 	"github.com/ndidplatform/migration-tools/utils"
 	did "github.com/ndidplatform/smart-contract/abci/did/v1"
 	"github.com/syndtr/goleveldb/leveldb/opt"
@@ -101,6 +104,12 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 	tree.Iterate(func(key []byte, value []byte) (stop bool) {
 		// Validator
 		if strings.Contains(string(key), "val:") {
+
+			// Delete prefix
+			if bytes.Contains(key, kvPairPrefixKey) {
+				key = bytes.TrimPrefix(key, kvPairPrefixKey)
+			}
+
 			var kv did.KeyValue
 			kv.Key = key
 			kv.Value = value
@@ -141,6 +150,38 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 		if strings.Contains(string(key), "lastBlock") {
 			return false
 		}
+
+		// Delete prefix
+		if bytes.Contains(key, kvPairPrefixKey) {
+			key = bytes.TrimPrefix(key, kvPairPrefixKey)
+		}
+
+		// If key is about request, Save version of value and update key
+		if strings.Contains(string(key), "Request") && !strings.Contains(string(key), "TokenPriceFunc") {
+			versionsKeyStr := string(key) + "|versions"
+			versionsKey := []byte(versionsKeyStr)
+			var versions []int64
+			versions = append(versions, 1)
+			var keyVersions data.KeyVersions
+			keyVersions.Versions = versions
+			value, err := ProtoDeterministicMarshal(&keyVersions)
+			if err != nil {
+				panic(err) // Should panic or return err?
+			}
+			fmt.Printf("versionsKey: %s\n", versionsKey)
+			var kv did.KeyValue
+			kv.Key = versionsKey
+			kv.Value = value
+			jsonStr, err := json.Marshal(kv)
+			if err != nil {
+				panic(err)
+			}
+			fWriteLn(backupDataFileName, jsonStr, backupDataDir)
+			totalKV++
+
+			key = []byte(string(key) + "|" + "1")
+		}
+
 		var kv did.KeyValue
 		kv.Key = key
 		kv.Value = value
@@ -228,4 +269,17 @@ func getEnv(key, defaultValue string) string {
 		value = defaultValue
 	}
 	return value
+}
+
+func ProtoDeterministicMarshal(m proto.Message) ([]byte, error) {
+	var b proto.Buffer
+	b.SetDeterministic(true)
+	if err := b.Marshal(m); err != nil {
+		return nil, err
+	}
+	retBytes := b.Bytes()
+	if retBytes == nil {
+		retBytes = make([]byte, 0)
+	}
+	return retBytes, nil
 }
