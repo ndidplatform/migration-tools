@@ -10,9 +10,7 @@ import (
 	"strings"
 
 	"github.com/ndidplatform/migration-tools/utils"
-	did "github.com/ndidplatform/smart-contract/abci/did/v1"
-	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/tendermint/iavl"
+	"github.com/ndidplatform/smart-contract/abci/did/v1"
 	dbm "github.com/tendermint/tendermint/libs/db"
 )
 
@@ -77,28 +75,39 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 	if backupBlockNumberStr == "" {
 		backupBlockNumberStr = curChain.LatestBlockHeight
 	}
-	backupBlockNumber, err := strconv.ParseInt(backupBlockNumberStr, 10, 64)
-	if err != nil {
-		panic(err)
-	}
+	// backupBlockNumber, err := strconv.ParseInt(backupBlockNumberStr, 10, 64)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// Delete backup file
 	deleteFile(backupDataDir + backupDataFileName + ".txt")
 	deleteFile(backupDataDir + backupValidatorFileName + ".txt")
 	deleteFile(backupDataDir + chainHistoryFileName + ".txt")
 
+	var dbType = getEnv("ABCI_DB_TYPE", "goleveldb")
 	// Read state db
-	db, err := dbm.NewGoLevelDBWithOpts(dbName, dbDir, &opt.Options{ReadOnly: true})
-	if err != nil {
-		panic(err)
-	}
+	db := dbm.NewDB(dbName, dbm.DBBackendType(dbType), dbDir)
+	// db, err := dbm.NewGoLevelDBWithOpts(dbName, dbDir, &opt.Options{ReadOnly: true})
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	oldTree := iavl.NewMutableTree(db, 0)
-	oldTree.LoadVersion(backupBlockNumber)
-	tree, _ := oldTree.GetImmutable(backupBlockNumber)
-	_, ndidNodeID := tree.Get(prefixKey([]byte("MasterNDID")))
+	// oldTree := iavl.NewMutableTree(db, 0)
+	// oldTree.LoadVersion(backupBlockNumber)
+	// tree, _ := oldTree.GetImmutable(backupBlockNumber)
+	tree := db
+	ndidNodeID := tree.Get([]byte("MasterNDID"))
 	totalKV := 0
-	tree.Iterate(func(key []byte, value []byte) (stop bool) {
+
+	itr := tree.Iterator(nil, nil)
+	defer itr.Close()
+
+	for itr.Valid() {
+		skip := false
+
+		key, value := itr.Key(), itr.Value()
+
 		// Validator
 		if strings.Contains(string(key), "val:") {
 			var kv did.KeyValue
@@ -109,7 +118,7 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 				panic(err)
 			}
 			fWriteLn(backupValidatorFileName, jsonStr, backupDataDir)
-			return false
+			skip = true
 		}
 		// Chain history info
 		if strings.Contains(string(key), "ChainHistoryInfo") {
@@ -126,20 +135,20 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 				panic(err)
 			}
 			fWriteLn(chainHistoryFileName, chainHistoryStr, backupDataDir)
-			return false
+			skip = true
 		}
 		if strings.Contains(string(key), string(ndidNodeID)) {
-			return false
+			skip = true
 		}
 		if strings.Contains(string(key), "MasterNDID") {
-			return false
+			skip = true
 		}
 		if strings.Contains(string(key), "InitState") {
-			return false
+			skip = true
 		}
 		// If key is last block key, not save to backup file
 		if strings.Contains(string(key), "lastBlock") {
-			return false
+			skip = true
 		}
 		var kv did.KeyValue
 		kv.Key = key
@@ -148,15 +157,18 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 		if err != nil {
 			panic(err)
 		}
-		fWriteLn(backupDataFileName, jsonStr, backupDataDir)
-		totalKV++
-		if math.Mod(float64(totalKV), 100) == 0.0 {
-			fmt.Printf("Total number of saved kv: %d\n", totalKV)
+		if !skip {
+			fWriteLn(backupDataFileName, jsonStr, backupDataDir)
+			totalKV++
+			if math.Mod(float64(totalKV), 100) == 0.0 {
+				fmt.Printf("Total number of saved kv: %d\n", totalKV)
+			}
 		}
-		return false
-	})
+		itr.Next()
+	}
+
 	// If key do not have "ChainHistoryInfo" key, create file
-	if !tree.Has(prefixKey([]byte("ChainHistoryInfo"))) {
+	if !tree.Has([]byte("ChainHistoryInfo")) {
 		var chainHistory ChainHistory
 		chainHistory.Chains = append(chainHistory.Chains, curChain)
 		chainHistoryStr, err := json.Marshal(chainHistory)
