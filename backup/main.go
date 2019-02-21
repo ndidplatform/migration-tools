@@ -156,6 +156,40 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 			key = bytes.TrimPrefix(key, kvPairPrefixKey)
 		}
 
+		// If key is proxy key, not save
+		if strings.Contains(string(key), "Proxy|") {
+			return false
+		}
+
+		// If key is node detail, check node is behind proxy.
+		// If node is behind proxy, set proxy ID and proxy config
+		if strings.Contains(string(key), "NodeID|") {
+			splitedKey := strings.Split(string(key), "|")
+			proxyKey := "Proxy" + "|" + splitedKey[1]
+			_, proxyValue := tree.Get(prefixKey([]byte(proxyKey)))
+			if proxyValue != nil {
+				var proxy data.Proxy
+				err := proto.Unmarshal([]byte(value), &proxy)
+				if err != nil {
+					panic(err)
+				}
+				splitedKey := strings.Split(string(key), "|")
+				nodeDetailKey := "NodeID" + "|" + splitedKey[1]
+				_, nodeDetailValue := tree.Get(prefixKey([]byte(nodeDetailKey)))
+				var nodeDetail data.NodeDetail
+				err = proto.Unmarshal([]byte(nodeDetailValue), &nodeDetail)
+				if err != nil {
+					panic(err)
+				}
+				nodeDetail.ProxyNodeId = proxy.ProxyNodeId
+				nodeDetail.ProxyConfig = proxy.Config
+				value, err = ProtoDeterministicMarshal(&nodeDetail)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+
 		// If key is about request, Save version of value and update key
 		if strings.Contains(string(key), "Request") && !strings.Contains(string(key), "TokenPriceFunc") {
 			versionsKeyStr := string(key) + "|versions"
@@ -166,9 +200,8 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 			keyVersions.Versions = versions
 			value, err := ProtoDeterministicMarshal(&keyVersions)
 			if err != nil {
-				panic(err) // Should panic or return err?
+				panic(err)
 			}
-			fmt.Printf("versionsKey: %s\n", versionsKey)
 			var kv did.KeyValue
 			kv.Key = versionsKey
 			kv.Value = value

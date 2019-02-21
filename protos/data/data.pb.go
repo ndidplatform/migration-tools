@@ -59,17 +59,241 @@ func (m *KeyVersions) GetVersions() []int64 {
 	return nil
 }
 
+type NodeDetail struct {
+	PublicKey            string   `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	MasterPublicKey      string   `protobuf:"bytes,2,opt,name=master_public_key,json=masterPublicKey,proto3" json:"master_public_key,omitempty"`
+	NodeName             string   `protobuf:"bytes,3,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`
+	Role                 string   `protobuf:"bytes,4,opt,name=role,proto3" json:"role,omitempty"`
+	MaxIal               float64  `protobuf:"fixed64,5,opt,name=max_ial,json=maxIal,proto3" json:"max_ial,omitempty"`
+	MaxAal               float64  `protobuf:"fixed64,6,opt,name=max_aal,json=maxAal,proto3" json:"max_aal,omitempty"`
+	Mq                   []*MQ    `protobuf:"bytes,7,rep,name=mq,proto3" json:"mq,omitempty"`
+	Active               bool     `protobuf:"varint,8,opt,name=active,proto3" json:"active,omitempty"`
+	ProxyNodeId          string   `protobuf:"bytes,9,opt,name=proxy_node_id,json=proxyNodeId,proto3" json:"proxy_node_id,omitempty"`
+	ProxyConfig          string   `protobuf:"bytes,10,opt,name=proxy_config,json=proxyConfig,proto3" json:"proxy_config,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *NodeDetail) Reset()         { *m = NodeDetail{} }
+func (m *NodeDetail) String() string { return proto.CompactTextString(m) }
+func (*NodeDetail) ProtoMessage()    {}
+func (*NodeDetail) Descriptor() ([]byte, []int) {
+	return fileDescriptor_492be2f0ffbab25c, []int{1}
+}
+
+func (m *NodeDetail) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_NodeDetail.Unmarshal(m, b)
+}
+func (m *NodeDetail) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_NodeDetail.Marshal(b, m, deterministic)
+}
+func (m *NodeDetail) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_NodeDetail.Merge(m, src)
+}
+func (m *NodeDetail) XXX_Size() int {
+	return xxx_messageInfo_NodeDetail.Size(m)
+}
+func (m *NodeDetail) XXX_DiscardUnknown() {
+	xxx_messageInfo_NodeDetail.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_NodeDetail proto.InternalMessageInfo
+
+func (m *NodeDetail) GetPublicKey() string {
+	if m != nil {
+		return m.PublicKey
+	}
+	return ""
+}
+
+func (m *NodeDetail) GetMasterPublicKey() string {
+	if m != nil {
+		return m.MasterPublicKey
+	}
+	return ""
+}
+
+func (m *NodeDetail) GetNodeName() string {
+	if m != nil {
+		return m.NodeName
+	}
+	return ""
+}
+
+func (m *NodeDetail) GetRole() string {
+	if m != nil {
+		return m.Role
+	}
+	return ""
+}
+
+func (m *NodeDetail) GetMaxIal() float64 {
+	if m != nil {
+		return m.MaxIal
+	}
+	return 0
+}
+
+func (m *NodeDetail) GetMaxAal() float64 {
+	if m != nil {
+		return m.MaxAal
+	}
+	return 0
+}
+
+func (m *NodeDetail) GetMq() []*MQ {
+	if m != nil {
+		return m.Mq
+	}
+	return nil
+}
+
+func (m *NodeDetail) GetActive() bool {
+	if m != nil {
+		return m.Active
+	}
+	return false
+}
+
+func (m *NodeDetail) GetProxyNodeId() string {
+	if m != nil {
+		return m.ProxyNodeId
+	}
+	return ""
+}
+
+func (m *NodeDetail) GetProxyConfig() string {
+	if m != nil {
+		return m.ProxyConfig
+	}
+	return ""
+}
+
+type MQ struct {
+	Ip                   string   `protobuf:"bytes,1,opt,name=ip,proto3" json:"ip,omitempty"`
+	Port                 int64    `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *MQ) Reset()         { *m = MQ{} }
+func (m *MQ) String() string { return proto.CompactTextString(m) }
+func (*MQ) ProtoMessage()    {}
+func (*MQ) Descriptor() ([]byte, []int) {
+	return fileDescriptor_492be2f0ffbab25c, []int{2}
+}
+
+func (m *MQ) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_MQ.Unmarshal(m, b)
+}
+func (m *MQ) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_MQ.Marshal(b, m, deterministic)
+}
+func (m *MQ) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MQ.Merge(m, src)
+}
+func (m *MQ) XXX_Size() int {
+	return xxx_messageInfo_MQ.Size(m)
+}
+func (m *MQ) XXX_DiscardUnknown() {
+	xxx_messageInfo_MQ.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MQ proto.InternalMessageInfo
+
+func (m *MQ) GetIp() string {
+	if m != nil {
+		return m.Ip
+	}
+	return ""
+}
+
+func (m *MQ) GetPort() int64 {
+	if m != nil {
+		return m.Port
+	}
+	return 0
+}
+
+type Proxy struct {
+	ProxyNodeId          string   `protobuf:"bytes,1,opt,name=proxy_node_id,json=proxyNodeId,proto3" json:"proxy_node_id,omitempty"`
+	Config               string   `protobuf:"bytes,2,opt,name=config,proto3" json:"config,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Proxy) Reset()         { *m = Proxy{} }
+func (m *Proxy) String() string { return proto.CompactTextString(m) }
+func (*Proxy) ProtoMessage()    {}
+func (*Proxy) Descriptor() ([]byte, []int) {
+	return fileDescriptor_492be2f0ffbab25c, []int{3}
+}
+
+func (m *Proxy) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Proxy.Unmarshal(m, b)
+}
+func (m *Proxy) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Proxy.Marshal(b, m, deterministic)
+}
+func (m *Proxy) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Proxy.Merge(m, src)
+}
+func (m *Proxy) XXX_Size() int {
+	return xxx_messageInfo_Proxy.Size(m)
+}
+func (m *Proxy) XXX_DiscardUnknown() {
+	xxx_messageInfo_Proxy.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Proxy proto.InternalMessageInfo
+
+func (m *Proxy) GetProxyNodeId() string {
+	if m != nil {
+		return m.ProxyNodeId
+	}
+	return ""
+}
+
+func (m *Proxy) GetConfig() string {
+	if m != nil {
+		return m.Config
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*KeyVersions)(nil), "KeyVersions")
+	proto.RegisterType((*NodeDetail)(nil), "NodeDetail")
+	proto.RegisterType((*MQ)(nil), "MQ")
+	proto.RegisterType((*Proxy)(nil), "Proxy")
 }
 
 func init() { proto.RegisterFile("protos/data/data.proto", fileDescriptor_492be2f0ffbab25c) }
 
 var fileDescriptor_492be2f0ffbab25c = []byte{
-	// 77 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2b, 0x28, 0xca, 0x2f,
-	0xc9, 0x2f, 0xd6, 0x4f, 0x49, 0x2c, 0x49, 0x04, 0x13, 0x7a, 0x60, 0x01, 0x25, 0x4d, 0x2e, 0x6e,
-	0xef, 0xd4, 0xca, 0xb0, 0xd4, 0xa2, 0xe2, 0xcc, 0xfc, 0xbc, 0x62, 0x21, 0x29, 0x2e, 0x8e, 0x32,
-	0x28, 0x5b, 0x82, 0x51, 0x81, 0x59, 0x83, 0x39, 0x08, 0xce, 0x4f, 0x62, 0x03, 0xeb, 0x30, 0x06,
-	0x04, 0x00, 0x00, 0xff, 0xff, 0x07, 0x25, 0xeb, 0x57, 0x4b, 0x00, 0x00, 0x00,
+	// 325 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x91, 0x5f, 0x4b, 0xc3, 0x30,
+	0x14, 0xc5, 0x49, 0xba, 0x75, 0xed, 0x9d, 0x7f, 0x30, 0xc2, 0x0c, 0x8a, 0x50, 0xfb, 0x54, 0x7d,
+	0x98, 0xa0, 0x9f, 0x40, 0xe6, 0xcb, 0x18, 0x1b, 0x5b, 0x1f, 0x7c, 0x2d, 0x77, 0x6b, 0x94, 0x60,
+	0xd2, 0x74, 0x6d, 0x1d, 0xeb, 0x97, 0xf2, 0x33, 0x4a, 0xd3, 0x3a, 0x06, 0x7b, 0x29, 0xf7, 0x9e,
+	0xf3, 0x2b, 0x27, 0x39, 0x81, 0x51, 0x5e, 0x98, 0xca, 0x94, 0xcf, 0x29, 0x56, 0x68, 0x3f, 0x63,
+	0x2b, 0x84, 0x8f, 0x30, 0x9c, 0x89, 0xfa, 0x43, 0x14, 0xa5, 0x34, 0x59, 0xc9, 0x6e, 0xc1, 0xdb,
+	0x75, 0x33, 0x27, 0x81, 0x13, 0x39, 0xf1, 0x61, 0x0f, 0x7f, 0x29, 0xc0, 0xc2, 0xa4, 0xe2, 0x5d,
+	0x54, 0x28, 0x15, 0xbb, 0x07, 0xc8, 0x7f, 0xd6, 0x4a, 0x6e, 0x92, 0x6f, 0x51, 0x73, 0x12, 0x90,
+	0xc8, 0x8f, 0xfd, 0x56, 0x99, 0x89, 0x9a, 0x3d, 0xc1, 0x95, 0xc6, 0xb2, 0x12, 0x45, 0x72, 0x44,
+	0x51, 0x4b, 0x5d, 0xb6, 0xc6, 0xf2, 0xc0, 0xde, 0x81, 0x9f, 0x99, 0x54, 0x24, 0x19, 0x6a, 0xc1,
+	0x1d, 0xcb, 0x78, 0x8d, 0xb0, 0x40, 0x2d, 0x18, 0x83, 0x5e, 0x61, 0x94, 0xe0, 0x3d, 0xab, 0xdb,
+	0x99, 0xdd, 0xc0, 0x40, 0xe3, 0x3e, 0x91, 0xa8, 0x78, 0x3f, 0x20, 0x11, 0x89, 0x5d, 0x8d, 0xfb,
+	0x29, 0xaa, 0x7f, 0x03, 0x51, 0x71, 0xf7, 0x60, 0xbc, 0xa1, 0x62, 0xd7, 0x40, 0xf5, 0x96, 0x0f,
+	0x02, 0x27, 0x1a, 0xbe, 0x38, 0xe3, 0xf9, 0x2a, 0xa6, 0x7a, 0xcb, 0x46, 0xe0, 0xe2, 0xa6, 0x92,
+	0x3b, 0xc1, 0xbd, 0x80, 0x44, 0x5e, 0xdc, 0x6d, 0x2c, 0x84, 0xf3, 0xbc, 0x30, 0xfb, 0x3a, 0xb1,
+	0xa7, 0x92, 0x29, 0xf7, 0x6d, 0xf6, 0xd0, 0x8a, 0x4d, 0x05, 0xd3, 0x94, 0x3d, 0xc0, 0x59, 0xcb,
+	0x6c, 0x4c, 0xf6, 0x29, 0xbf, 0x38, 0x1c, 0x21, 0x13, 0x2b, 0x85, 0x11, 0xd0, 0xf9, 0x8a, 0x5d,
+	0x00, 0x95, 0x79, 0xd7, 0x0f, 0x95, 0x79, 0x73, 0x9f, 0xdc, 0x14, 0x95, 0xed, 0xc2, 0x89, 0xed,
+	0x1c, 0x4e, 0xa0, 0xbf, 0x6c, 0x7e, 0x3c, 0x4d, 0x26, 0xa7, 0xc9, 0x23, 0x70, 0xbb, 0xcc, 0xb6,
+	0xce, 0x6e, 0x5b, 0xbb, 0xf6, 0x45, 0x5f, 0xff, 0x02, 0x00, 0x00, 0xff, 0xff, 0x27, 0xa4, 0xf4,
+	0x88, 0xeb, 0x01, 0x00, 0x00,
 }

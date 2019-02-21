@@ -285,8 +285,10 @@
   analyzer-version = 1
   input-imports = [
     "github.com/gogo/protobuf/proto",
+    "github.com/golang/protobuf/proto",
     "github.com/ndidplatform/smart-contract/abci/did/v1",
     "github.com/ndidplatform/smart-contract/protos/tendermint",
+    "github.com/syndtr/goleveldb/leveldb/opt",
     "github.com/tendermint/iavl",
     "github.com/tendermint/tendermint/abci/types",
     "github.com/tendermint/tendermint/libs/common",
