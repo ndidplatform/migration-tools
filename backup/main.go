@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gogo/protobuf/proto"
+	"github.com/ndidplatform/migration-tools/protos/data"
 	"github.com/ndidplatform/migration-tools/utils"
 	"github.com/ndidplatform/smart-contract/abci/did/v1"
 	dbm "github.com/tendermint/tendermint/libs/db"
@@ -150,6 +152,43 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 		if strings.Contains(string(key), "lastBlock") {
 			skip = true
 		}
+
+		// If key is request detail with version, not save
+		if strings.Contains(string(key), "Request") && !strings.Contains(string(key), "TokenPriceFunc") {
+			skip = true
+		}
+
+		// If key is version of request, get lastest value of request and set to version 1
+		if strings.Contains(string(key), "Request") && strings.Contains(string(key), "versions") {
+			var keyVersions data.KeyVersions
+			err := proto.Unmarshal([]byte(value), &keyVersions)
+			if err != nil {
+				panic(err)
+			}
+			lastVersion := keyVersions.Versions[len(keyVersions.Versions)-1]
+			splitedKey := strings.Split(string(key), "|")
+			lastestRequestKey := splitedKey[0] + "|" + splitedKey[1] + "|" + strconv.FormatInt(lastVersion, 10)
+			lastestRequestValue := tree.Get([]byte(lastestRequestKey))
+
+			var versions []int64
+			versions = append(versions, 1)
+			keyVersions.Versions = versions
+			value, err = ProtoDeterministicMarshal(&keyVersions)
+			if err != nil {
+				panic(err)
+			}
+
+			var kv did.KeyValue
+			kv.Key = []byte(lastestRequestKey)
+			kv.Value = lastestRequestValue
+			jsonStr, err := json.Marshal(kv)
+			if err != nil {
+				panic(err)
+			}
+			fWriteLn(backupDataFileName, jsonStr, backupDataDir)
+			totalKV++
+		}
+
 		var kv did.KeyValue
 		kv.Key = key
 		kv.Value = value
@@ -240,4 +279,17 @@ func getEnv(key, defaultValue string) string {
 		value = defaultValue
 	}
 	return value
+}
+
+func ProtoDeterministicMarshal(m proto.Message) ([]byte, error) {
+	var b proto.Buffer
+	b.SetDeterministic(true)
+	if err := b.Marshal(m); err != nil {
+		return nil, err
+	}
+	retBytes := b.Bytes()
+	if retBytes == nil {
+		retBytes = make([]byte, 0)
+	}
+	return retBytes, nil
 }
