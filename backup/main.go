@@ -154,7 +154,7 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 		}
 
 		// If key is request detail with version, not save
-		if strings.Contains(string(key), "Request") && !strings.Contains(string(key), "TokenPriceFunc") {
+		if strings.Contains(string(key), "Request") && !strings.Contains(string(key), "TokenPriceFunc") && !strings.Contains(string(key), "versions") {
 			skip = true
 		}
 
