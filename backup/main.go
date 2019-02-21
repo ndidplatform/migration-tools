@@ -179,7 +179,7 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 			}
 
 			var kv did.KeyValue
-			kv.Key = []byte(lastestRequestKey)
+			kv.Key = []byte(splitedKey[0] + "|" + splitedKey[1] + "|" + "1")
 			kv.Value = lastestRequestValue
 			jsonStr, err := json.Marshal(kv)
 			if err != nil {
