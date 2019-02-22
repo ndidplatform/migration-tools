@@ -169,7 +169,7 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 			_, proxyValue := tree.Get(prefixKey([]byte(proxyKey)))
 			if proxyValue != nil {
 				var proxy data.Proxy
-				err := proto.Unmarshal([]byte(value), &proxy)
+				err := proto.Unmarshal([]byte(proxyValue), &proxy)
 				if err != nil {
 					panic(err)
 				}
