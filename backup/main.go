@@ -71,9 +71,9 @@ func readStateDBAndWriteToFile(curChain ChainHistoryDetail) {
 	goPath := getEnv("GOPATH", "")
 	dbDir := getEnv("DB_NAME", goPath+"/src/github.com/ndidplatform/smart-contract/DB1")
 	dbName := "didDB"
-	backupDataFileName := getEnv("BACKUP_DATA_FILE", "data")
-	backupValidatorFileName := getEnv("BACKUP_VALIDATORS_FILE", "validators")
-	chainHistoryFileName := getEnv("CHAIN_HISTORY_FILE", "chain_history")
+	backupDataFileName := getEnv("BACKUP_DATA_FILE_NAME", "data")
+	backupValidatorFileName := getEnv("BACKUP_VALIDATORS_FILE_NAME", "validators")
+	chainHistoryFileName := getEnv("CHAIN_HISTORY_FILE_NAME", "chain_history")
 	backupBlockNumberStr := getEnv("BLOCK_NUMBER", "")
 	backupDataDir := getEnv("BACKUP_DATA_DIR", "backup_Data/")
 

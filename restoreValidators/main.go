@@ -24,7 +24,7 @@ import (
 func main() {
 	// Variable
 	ndidID := getEnv("NDID_NODE_ID", "NDID")
-	backupValidatorFileName := getEnv("BACKUP_VALIDATORS_FILE", "validators")
+	backupValidatorFileName := getEnv("BACKUP_VALIDATORS_FILE_NAME", "validators")
 	backupDataDir := getEnv("BACKUP_DATA_DIR", "backup_Data/")
 	keyDir := getEnv("KEY_DIR", "key/")
 	ndidKeyFile, err := os.Open(keyDir + "ndid")

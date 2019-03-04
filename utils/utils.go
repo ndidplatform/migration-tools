@@ -95,7 +95,7 @@ func CallTendermint(fnName []byte, param []byte, nonce []byte, signature []byte,
 	var URL *url.URL
 	URL, err = url.Parse(tendermintAddr)
 	if err != nil {
-		panic("boom")
+		panic(err)
 	}
 	URL.Path += "/broadcast_tx_commit"
 	parameters := url.Values{}
