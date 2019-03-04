@@ -20,10 +20,10 @@
     **Environment variable options**
  
     - `BLOCK_NUMBER` : Backup block number
-    - `DB_NAME` : Source directory path for copy stateDB
-    - `BACKUP_DATA_FILE` : File path for save data
-    - `BACKUP_VALIDATORS_FILE` : File path for save validators data
-    - `CHAIN_HISTORY_FILE` : File path for save chain history data
+    - `DB_NAME` : Source directory path for copy ABCI stateDB
+    - `BACKUP_DATA_FILE` : File name of ABCI stateDB backup data
+    - `BACKUP_VALIDATORS_FILE` : File name of validators backup data
+    - `CHAIN_HISTORY_FILE` : File name of chain history data
     - `TENDERMINT_ADDRESS` : Tendermint address
     - `BACKUP_DATA_DIR` : Directoty path for save backup data
 
@@ -36,10 +36,10 @@
     **Environment variable options**
  
     - `NDID_NODE_ID` : NDID node id
-    - `BACKUP_DATA_FILE` : File path for save data
-    - `CHAIN_HISTORY_FILE` : File path for save chain history data
+    - `BACKUP_DATA_FILE` : File name of ABCI stateDB backup data
+    - `CHAIN_HISTORY_FILE` : File name of chain history data
     - `TENDERMINT_ADDRESS` : Tendermint address
-    - `BACKUP_DATA_DIR` : Directoty path for save backup data
+    - `BACKUP_DATA_DIR` : Directory path of backup data
 
 3.  Run restore validators script (Not required)
 
@@ -50,5 +50,5 @@
     **Environment variable options**
  
     - `NDID_NODE_ID` : NDID node id
-    - `BACKUP_VALIDATORS_FILE` : File path for save validators data
+    - `BACKUP_VALIDATORS_FILE` : File name of validators backup data
     - `TENDERMINT_ADDRESS` : Tendermint address
