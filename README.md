@@ -25,7 +25,7 @@
     - `BACKUP_VALIDATORS_FILE` : File name of validators backup data
     - `CHAIN_HISTORY_FILE` : File name of chain history data
     - `TENDERMINT_ADDRESS` : Tendermint address
-    - `BACKUP_DATA_DIR` : Directoty path for save backup data
+    - `BACKUP_DATA_DIR` : Directory path for save backup data
 
 2.  Run restore script 
 
