@@ -99,18 +99,19 @@
   revision = "b84e30acd515aadc4b783ad4ff83aff3299bdfe0"
 
 [[projects]]
-  digest = "1:ed9f2fdff00cb3858def38a6d30cf3f199762376a9bc5a2b24eace0d146c561e"
+  digest = "1:177be558d5e58abacc863b18738c087d4506b9438d6bdcbd9c5b6876622edbd3"
   name = "github.com/ndidplatform/smart-contract"
   packages = [
     "abci/code",
     "abci/did/v1",
     "abci/utils",
+    "abci/version",
     "protos/data",
     "protos/tendermint",
   ]
   pruneopts = "UT"
-  revision = "1680591c812c6a1bc919cd8fe522c39edf4e3c9f"
-  version = "v0.13.0"
+  revision = "6997fd0fcc69addc896fd9093f3afbb758af3db8"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
@@ -166,7 +167,7 @@
   version = "v0.11.1"
 
 [[projects]]
-  digest = "1:0d792010e8db081675a539e63de76dd689ae6aacbc03c69bbc8ac3f66f1eb418"
+  digest = "1:1ebf91fa3e3db810e0c03074c4d351c0c17f8c7e4fcfbe96b069e59562570668"
   name = "github.com/tendermint/tendermint"
   packages = [
     "abci/types",
@@ -177,8 +178,8 @@
     "libs/log",
   ]
   pruneopts = "UT"
-  revision = "22dcc92232cd04ce7381043e09d85dd536ae3b96"
-  version = "v0.26.3"
+  revision = "b771798d48c27630fb37b74c8e229da5a8b2042c"
+  version = "v0.26.4"
 
 [[projects]]
   branch = "master"
