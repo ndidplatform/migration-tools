@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/ndidplatform/migration-tools/protos/data"
 	"github.com/ndidplatform/migration-tools/utils"
 	did "github.com/ndidplatform/smart-contract/abci/did/v1"
+	"github.com/ndidplatform/smart-contract/protos/data"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/tendermint/iavl"
 	dbm "github.com/tendermint/tendermint/libs/db"
