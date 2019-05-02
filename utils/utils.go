@@ -42,6 +42,10 @@ import (
 	"github.com/tendermint/tendermint/libs/common"
 )
 
+var (
+	KvPairPrefixKey = []byte("kvPairKey:")
+)
+
 var tendermintAddr = GetEnv("TENDERMINT_ADDRESS", "http://localhost:45000")
 
 func GetEnv(key, defaultValue string) string {
@@ -342,4 +346,45 @@ func GetBlockStatus(height int64) BlockResult {
 	var body BlockResult
 	json.NewDecoder(resp.Body).Decode(&body)
 	return body
+}
+
+func PrefixKey(key []byte) []byte {
+	return append(KvPairPrefixKey, key...)
+}
+
+func FWriteLn(filename string, data []byte, backupDataDir string) {
+	CreateDirIfNotExist(backupDataDir)
+	f, err := os.OpenFile(backupDataDir+filename+".txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	_, err = f.Write(data)
+	if err != nil {
+		panic(err)
+	}
+	_, err = f.WriteString("\r\n")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func CreateDirIfNotExist(dir string) {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0755)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func DeleteFile(dir string) {
+	_, err := os.Stat(dir)
+	if err != nil {
+		return
+	}
+	err = os.Remove(dir)
+	if err != nil {
+		panic(err)
+	}
 }
