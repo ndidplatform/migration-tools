@@ -89,14 +89,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 		switch {
 		case strings.Contains(string(key), "val:"):
 			// Validator
-			var kv did.KeyValue
-			kv.Key = key
-			kv.Value = value
-			jsonStr, err := json.Marshal(kv)
-			if err != nil {
-				panic(err)
-			}
-			utils.FWriteLn(backupValidatorFileName, jsonStr, backupDataDir)
+			writeKeyValue(backupValidatorFileName, backupDataDir, key, value)
 			totalKV++
 		case strings.Contains(string(key), "ChainHistoryInfo"):
 			var chainHistory chainHistory
@@ -145,35 +138,78 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			if err != nil {
 				panic(err)
 			}
-			var kv did.KeyValue
-			kv.Key = key
-			kv.Value = newValue
-			jsonStr, err := json.Marshal(kv)
-			if err != nil {
-				panic(err)
-			}
-			utils.FWriteLn(backupDataFileName, jsonStr, backupDataDir)
+			writeKeyValue(backupDataFileName, backupDataDir, key, newValue)
 			totalKV++
 		case strings.Contains(string(key), "Request") && strings.Contains(string(key), "versions"):
 			// Versions of request
-			var kv did.KeyValue
-			kv.Key = key
-			kv.Value = value
-			jsonStr, err := json.Marshal(kv)
-			if err != nil {
-				panic(err)
-			}
-			utils.FWriteLn(backupDataFileName, jsonStr, backupDataDir)
+			writeKeyValue(backupDataFileName, backupDataDir, key, value)
 			totalKV++
 		case strings.Contains(string(key), "Request"):
 			// Request detail
 			// Update to new version of proto
-			// var requestV2 didProtoV2.Request
-			// var requestV3 didProtoV3.Request
+			var requestV2 didProtoV2.Request
+			var requestV3 didProtoV3.Request
+			err := proto.Unmarshal(value, &requestV2)
+			if err != nil {
+				panic(err)
+			}
+			requestV3.RequestId = requestV2.RequestId
+			requestV3.MinIdp = requestV2.MinIdp
+			requestV3.MinAal = requestV2.MinAal
+			requestV3.MinIal = requestV2.MinIal
+			requestV3.RequestTimeout = requestV2.RequestTimeout
+			requestV3.IdpIdList = requestV2.IdpIdList
+			for _, dataReq := range requestV2.DataRequestList {
+				var newDataReq didProtoV3.DataRequest
+				newDataReq.ServiceId = dataReq.ServiceId
+				newDataReq.AsIdList = dataReq.AsIdList
+				newDataReq.MinAs = dataReq.MinAs
+				newDataReq.RequestParamsHash = dataReq.RequestParamsHash
+				newDataReq.AnsweredAsIdList = dataReq.AnsweredAsIdList
+				newDataReq.ReceivedDataFromList = dataReq.ReceivedDataFromList
+				requestV3.DataRequestList = append(requestV3.DataRequestList, &newDataReq)
+			}
+			requestV3.RequestMessageHash = requestV2.RequestMessageHash
+			for _, res := range requestV2.ResponseList {
+				var newDataRes didProtoV3.Response
+				newDataRes.Ial = res.Ial
+				newDataRes.Aal = res.Aal
+				newDataRes.Status = res.Status
+				newDataRes.Signature = res.Signature
+				newDataRes.IdpId = res.IdpId
+				newDataRes.ValidIal = res.ValidIal
+				newDataRes.ValidSignature = res.ValidSignature
+				requestV3.ResponseList = append(requestV3.ResponseList, &newDataRes)
+			}
+			requestV3.Closed = requestV2.Closed
+			requestV3.TimedOut = requestV2.TimedOut
+			requestV3.Purpose = requestV2.Purpose
+			requestV3.Owner = requestV2.Owner
+			requestV3.Mode = int32(requestV2.Mode)
+			requestV3.UseCount = requestV2.UseCount
+			requestV3.CreationBlockHeight = requestV2.CreationBlockHeight
+			requestV3.ChainId = requestV2.ChainId
+			newValue, err := utils.ProtoDeterministicMarshal(&requestV3)
+			if err != nil {
+				panic(err)
+			}
+			writeKeyValue(backupDataFileName, backupDataDir, key, newValue)
+			totalKV++
 		}
 	}
 	fmt.Printf("Total number of saved kv: %d\n", totalKV)
 	fmt.Printf("Total number of kv: %d\n", totalKV)
+}
+
+func writeKeyValue(filename string, backupDataDir string, key, value []byte) {
+	var kv did.KeyValue
+	kv.Key = key
+	kv.Value = value
+	jsonStr, err := json.Marshal(kv)
+	if err != nil {
+		panic(err)
+	}
+	utils.FWriteLn(filename, jsonStr, backupDataDir)
 }
 
 type chainHistoryDetail struct {

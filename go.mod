@@ -1,6 +1,7 @@
 module migration-tools
 
 require (
+	github.com/BurntSushi/toml v0.3.1
 	github.com/btcsuite/btcd v0.0.0-20190523000118-16327141da8c // indirect
 	github.com/gogo/protobuf v1.2.1
 	github.com/ndidplatform/smart-contract v2.0.0+incompatible
