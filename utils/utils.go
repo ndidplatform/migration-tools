@@ -48,6 +48,19 @@ var (
 
 var tendermintAddr = GetEnv("TENDERMINT_ADDRESS", "http://localhost:45000")
 
+func ProtoDeterministicMarshal(m proto.Message) ([]byte, error) {
+	var b proto.Buffer
+	b.SetDeterministic(true)
+	if err := b.Marshal(m); err != nil {
+		return nil, err
+	}
+	retBytes := b.Bytes()
+	if retBytes == nil {
+		retBytes = make([]byte, 0)
+	}
+	return retBytes, nil
+}
+
 func GetEnv(key, defaultValue string) string {
 	value, exists := os.LookupEnv(key)
 	if !exists {

@@ -8,9 +8,13 @@ import (
 	"strconv"
 	"strings"
 
+	"migration-tools/utils"
+
 	"github.com/BurntSushi/toml"
-	"github.com/ndidplatform/migration-tools/utils"
+	"github.com/gogo/protobuf/proto"
 	"github.com/ndidplatform/smart-contract/abci/did/v1"
+	didProtoV2 "github.com/ndidplatform/smart-contract/protos/data"
+	didProtoV3 "github.com/ndidplatform/smart-contract/v3/protos/data"
 	bcTm "github.com/tendermint/tendermint/blockchain"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	stateTm "github.com/tendermint/tendermint/state"
@@ -78,13 +82,13 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 	for ; itr.Valid(); itr.Next() {
 		key := itr.Key()
 		value := itr.Value()
+		// Delete prefix
+		if bytes.Contains(key, utils.KvPairPrefixKey) {
+			key = bytes.TrimPrefix(key, utils.KvPairPrefixKey)
+		}
 		switch {
 		case strings.Contains(string(key), "val:"):
 			// Validator
-			// Delete prefix
-			if bytes.Contains(key, utils.KvPairPrefixKey) {
-				key = bytes.TrimPrefix(key, utils.KvPairPrefixKey)
-			}
 			var kv did.KeyValue
 			kv.Key = key
 			kv.Value = value
@@ -94,9 +98,6 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			}
 			utils.FWriteLn(backupValidatorFileName, jsonStr, backupDataDir)
 			totalKV++
-		case strings.Contains(string(key), string(ndidNodeID)) && !strings.Contains(string(key), "MasterNDID"):
-			// NDID node detail
-			// Do not save
 		case strings.Contains(string(key), "ChainHistoryInfo"):
 			var chainHistory chainHistory
 			if string(value) != "" {
@@ -112,8 +113,63 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			}
 			utils.FWriteLn(chainHistoryFileName, chainHistoryStr, backupDataDir)
 			totalKV++
+		case strings.Contains(string(key), string(ndidNodeID)) && !strings.Contains(string(key), "MasterNDID"):
+			// NDID node detail
+			// Do not save
 		case strings.Contains(string(key), "NodeID"):
-			// fmt.Println(string(value))
+			// Node detail
+			// Update to new version of proto
+			var nodeDetailV2 didProtoV2.NodeDetail
+			var nodeDetailV3 didProtoV3.NodeDetail
+			err := proto.Unmarshal(value, &nodeDetailV2)
+			if err != nil {
+				panic(err)
+			}
+			nodeDetailV3.PublicKey = nodeDetailV2.PublicKey
+			nodeDetailV3.MasterPublicKey = nodeDetailV2.MasterPublicKey
+			nodeDetailV3.NodeName = nodeDetailV2.NodeName
+			nodeDetailV3.Role = nodeDetailV2.Role
+			for _, mq := range nodeDetailV2.Mq {
+				var newMq didProtoV3.MQ
+				newMq.Ip = mq.Ip
+				newMq.Port = mq.Port
+				nodeDetailV3.Mq = append(nodeDetailV3.Mq, &newMq)
+			}
+			nodeDetailV3.Active = nodeDetailV2.Active
+			nodeDetailV3.ProxyNodeId = nodeDetailV2.ProxyNodeId
+			nodeDetailV3.ProxyConfig = nodeDetailV2.ProxyConfig
+			nodeDetailV3.MaxIal = nodeDetailV2.MaxIal
+			nodeDetailV3.MaxAal = nodeDetailV2.MaxAal
+			nodeDetailV3.SupportedRequestMessageDataUrlTypeList = make([]string, 0)
+			newValue, err := utils.ProtoDeterministicMarshal(&nodeDetailV3)
+			if err != nil {
+				panic(err)
+			}
+			var kv did.KeyValue
+			kv.Key = key
+			kv.Value = newValue
+			jsonStr, err := json.Marshal(kv)
+			if err != nil {
+				panic(err)
+			}
+			utils.FWriteLn(backupDataFileName, jsonStr, backupDataDir)
+			totalKV++
+		case strings.Contains(string(key), "Request") && strings.Contains(string(key), "versions"):
+			// Versions of request
+			var kv did.KeyValue
+			kv.Key = key
+			kv.Value = value
+			jsonStr, err := json.Marshal(kv)
+			if err != nil {
+				panic(err)
+			}
+			utils.FWriteLn(backupDataFileName, jsonStr, backupDataDir)
+			totalKV++
+		case strings.Contains(string(key), "Request"):
+			// Request detail
+			// Update to new version of proto
+			// var requestV2 didProtoV2.Request
+			// var requestV3 didProtoV3.Request
 		}
 	}
 	fmt.Printf("Total number of saved kv: %d\n", totalKV)
