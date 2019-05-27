@@ -8,13 +8,12 @@ import (
 	"strconv"
 	"strings"
 
-	"migration-tools/utils"
+	"github.com/ndidplatform/migration-tools/utils"
 
 	"github.com/BurntSushi/toml"
 	"github.com/gogo/protobuf/proto"
-	"github.com/ndidplatform/smart-contract/abci/did/v1"
-	didProtoV2 "github.com/ndidplatform/smart-contract/protos/data"
-	didProtoV3 "github.com/ndidplatform/smart-contract/v3/protos/data"
+	didProtoV2 "github.com/ndidplatform/migration-tools/protos/dataV2"
+	didProtoV3 "github.com/ndidplatform/migration-tools/protos/dataV3"
 	bcTm "github.com/tendermint/tendermint/blockchain"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	stateTm "github.com/tendermint/tendermint/state"
@@ -243,7 +242,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 }
 
 func writeKeyValue(filename string, backupDataDir string, key, value []byte) {
-	var kv did.KeyValue
+	var kv utils.KeyValue
 	kv.Key = key
 	kv.Value = value
 	jsonStr, err := json.Marshal(kv)

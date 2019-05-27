@@ -46,6 +46,11 @@ var (
 	KvPairPrefixKey = []byte("kvPairKey:")
 )
 
+type KeyValue struct {
+	Key   []byte `json:"key"`
+	Value []byte `json:"value"`
+}
+
 var tendermintAddr = GetEnv("TENDERMINT_ADDRESS", "http://localhost:45000")
 
 func ProtoDeterministicMarshal(m proto.Message) ([]byte, error) {
