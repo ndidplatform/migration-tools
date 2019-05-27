@@ -87,6 +87,24 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			key = bytes.TrimPrefix(key, utils.KvPairPrefixKey)
 		}
 		switch {
+		case strings.Contains(string(key), "lastBlock"):
+			// Last block
+			// Do not save
+		case strings.Contains(string(key), string(ndidNodeID)) && !strings.Contains(string(key), "MasterNDID"):
+			// NDID node detail
+			// Do not save
+		case strings.Contains(string(key), "MasterNDID"):
+			// NDID
+			// Do not save
+		case strings.Contains(string(key), "InitState"):
+			// Init state
+			// Do not save
+		case strings.Contains(string(key), "ProvideService"):
+			// AS need to RegisterServiceDestination after migrate chain completed
+			// Do not save
+		case strings.Contains(string(key), "Accessor"):
+			// All key that have associate with Accessor
+			// Do not save
 		case strings.Contains(string(key), "val:"):
 			// Validator
 			writeKeyValue(backupValidatorFileName, backupDataDir, key, value)
@@ -106,9 +124,6 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			}
 			utils.FWriteLn(chainHistoryFileName, chainHistoryStr, backupDataDir)
 			totalKV++
-		case strings.Contains(string(key), string(ndidNodeID)) && !strings.Contains(string(key), "MasterNDID"):
-			// NDID node detail
-			// Do not save
 		case strings.Contains(string(key), "NodeID"):
 			// Node detail
 			// Update to new version of proto
@@ -194,6 +209,32 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 				panic(err)
 			}
 			writeKeyValue(backupDataFileName, backupDataDir, key, newValue)
+			totalKV++
+		case strings.Contains(string(key), "AllNamespace"):
+			// Namespace list
+			var namespaceV2 didProtoV2.NamespaceList
+			var namespaceV3 didProtoV3.NamespaceList
+			err := proto.Unmarshal(value, &namespaceV2)
+			if err != nil {
+				panic(err)
+			}
+			for _, namespace := range namespaceV2.Namespaces {
+				var newNamesapce didProtoV3.Namespace
+				newNamesapce.Namespace = namespace.Namespace
+				newNamesapce.Description = namespace.Description
+				newNamesapce.Active = namespace.Active
+				newNamesapce.AllowedIdentifierCountInReferenceGroup = 1
+				newNamesapce.AllowedActiveIdentifierCountInReferenceGroup = 1
+				namespaceV3.Namespaces = append(namespaceV3.Namespaces, &newNamesapce)
+			}
+			newValue, err := utils.ProtoDeterministicMarshal(&namespaceV3)
+			if err != nil {
+				panic(err)
+			}
+			writeKeyValue(backupDataFileName, backupDataDir, key, newValue)
+			totalKV++
+		default:
+			writeKeyValue(backupDataFileName, backupDataDir, key, value)
 			totalKV++
 		}
 	}

@@ -1,0 +1,7 @@
+[[override]]
+  name = "github.com/tendermint/tendermint"
+  version = "=v0.30.2"
+
+[prune]
+  go-tests = true
+  unused-packages = true
