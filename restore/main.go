@@ -103,7 +103,7 @@ func initNDID(ndidKey *rsa.PrivateKey, ndidMasterKey *rsa.PrivateKey, ndidID str
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	ndidMasterPublicKeyBytes, err := utils.GeneratePublicKey(&ndidKey.PublicKey)
+	ndidMasterPublicKeyBytes, err := utils.GeneratePublicKey(&ndidMasterKey.PublicKey)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
