@@ -158,7 +158,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			// Versions of request
 			writeKeyValue(backupDataFileName, backupDataDir, key, value)
 			totalKV++
-		case strings.Contains(string(key), "Request"):
+		case strings.Contains(string(key), "Request") && !strings.Contains(string(key), "TokenPriceFunc"):
 			// Request detail
 			// Update to new version of proto
 			var requestV2 didProtoV2.Request
