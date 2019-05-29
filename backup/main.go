@@ -156,14 +156,22 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			totalKV++
 		case strings.Contains(string(key), "Request") && strings.Contains(string(key), "versions"):
 			// Versions of request
-			writeKeyValue(backupDataFileName, backupDataDir, key, value)
-			totalKV++
-		case strings.Contains(string(key), "Request") && !strings.Contains(string(key), "TokenPriceFunc"):
-			// Request detail
-			// Update to new version of proto
+			var keyVersions didProtoV3.KeyVersions
+			err := proto.Unmarshal([]byte(value), &keyVersions)
+			if err != nil {
+				panic(err)
+			}
+			lastVer := strconv.FormatInt(keyVersions.Versions[len(keyVersions.Versions)-1], 10)
+			partOfKey := strings.Split(string(key), "|")
+			reqID := partOfKey[1]
+
+			// Get last version of request detail
+			reqDetailKey := "Request" + "|" + reqID + "|" + lastVer
+			reqDetailValue := db.Get([]byte(reqDetailKey))
+
 			var requestV2 didProtoV2.Request
 			var requestV3 didProtoV3.Request
-			err := proto.Unmarshal(value, &requestV2)
+			err = proto.Unmarshal(reqDetailValue, &requestV2)
 			if err != nil {
 				panic(err)
 			}
@@ -203,12 +211,22 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			requestV3.UseCount = requestV2.UseCount
 			requestV3.CreationBlockHeight = requestV2.CreationBlockHeight
 			requestV3.ChainId = requestV2.ChainId
-			newValue, err := utils.ProtoDeterministicMarshal(&requestV3)
+			newReqDetailValue, err := utils.ProtoDeterministicMarshal(&requestV3)
 			if err != nil {
 				panic(err)
 			}
-			writeKeyValue(backupDataFileName, backupDataDir, key, newValue)
+			// Set to 1 version
+			keyVersions.Versions = append(make([]int64, 0), 1)
+			newReqVersionsValue, err := utils.ProtoDeterministicMarshal(&keyVersions)
+			if err != nil {
+				panic(err)
+			}
+			newReqDetailKey := "Request" + "|" + reqID + "|" + "1"
+			// Write request detail and Version of request detail
+			writeKeyValue(backupDataFileName, backupDataDir, []byte(newReqDetailKey), newReqDetailValue)
 			totalKV++
+			writeKeyValue(backupDataFileName, backupDataDir, key, newReqVersionsValue)
+			totalKV++ 
 		case strings.Contains(string(key), "AllNamespace"):
 			// Namespace list
 			var namespaceV2 didProtoV2.NamespaceList
