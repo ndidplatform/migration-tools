@@ -98,6 +98,9 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 		case strings.Contains(string(key), "InitState"):
 			// Init state
 			// Do not save
+		case strings.Contains(string(key), "IdentityProof"):
+			// Identity proof
+			// Do not save
 		case strings.Contains(string(key), "ProvideService") || strings.Contains(string(key), "ServiceDestination"):
 			// AS need to RegisterServiceDestination after migrate chain completed
 			// Do not save
@@ -226,7 +229,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			writeKeyValue(backupDataFileName, backupDataDir, []byte(newReqDetailKey), newReqDetailValue)
 			totalKV++
 			writeKeyValue(backupDataFileName, backupDataDir, key, newReqVersionsValue)
-			totalKV++ 
+			totalKV++
 		case strings.Contains(string(key), "AllNamespace"):
 			// Namespace list
 			var namespaceV2 didProtoV2.NamespaceList
