@@ -107,6 +107,9 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 		case strings.Contains(string(key), "Accessor"):
 			// All key that have associate with Accessor
 			// Do not save
+		case strings.Contains(string(key), "Request") && !strings.Contains(string(key), "versions"):
+			// Request detail
+			// Do not save
 		case strings.Contains(string(key), "val:"):
 			// Validator
 			writeKeyValue(backupValidatorFileName, backupDataDir, key, value)
