@@ -38,7 +38,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	protoTm "github.com/ndidplatform/smart-contract/protos/tendermint"
+	protoTm "github.com/ndidplatform/migration-tools/protos/tendermint"
 	"github.com/tendermint/tendermint/libs/common"
 )
 

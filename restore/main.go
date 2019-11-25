@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/ndidplatform/migration-tools/utils"
-	did "github.com/ndidplatform/smart-contract/abci/did/v1"
+	did "github.com/ndidplatform/migration-tools/didParam"
 	"github.com/tendermint/tendermint/libs/common"
 )
 
@@ -180,4 +180,3 @@ func endInit(ndidKey *rsa.PrivateKey, ndidID string) {
 	resultObj, _ := result.(utils.ResponseTx)
 	fmt.Println(resultObj.Result.DeliverTx.Log)
 }
-
