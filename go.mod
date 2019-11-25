@@ -6,7 +6,6 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/protobuf v1.3.0
-	github.com/ndidplatform/smart-contract v3.0.0+incompatible
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	github.com/tendermint/tendermint v0.32.1
 )
