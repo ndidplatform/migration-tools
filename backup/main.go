@@ -105,9 +105,6 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 		case strings.Contains(string(key), "IdentityProof"):
 			// Identity proof
 			// Do not save
-		case strings.Contains(string(key), "ProvideService") || strings.Contains(string(key), "ServiceDestination"):
-			// AS need to RegisterServiceDestination after migrate chain completed
-			// Do not save
 		case strings.Contains(string(key), "Accessor"):
 			// All key that have associate with Accessor
 			// Do not save
