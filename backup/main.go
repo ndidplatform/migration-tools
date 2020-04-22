@@ -158,6 +158,43 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			totalKV++
 			writeKeyValue(backupDataFileName, backupDataDir, key, newReqVersionsValue)
 			totalKV++
+		case strings.HasPrefix(string(key), "NodeID"):
+			// Add information (IdpAgent, UseWhitelist, Whitelist) to every node
+			var nodeDetailV4 didProtoV4.NodeDetail
+			if err := proto.Unmarshal([]byte(value), &nodeDetailV4); err != nil {
+				panic(err)
+			}
+
+			mqV5 := make([]*didProtoV5.MQ, 0, len(nodeDetailV4.Mq))
+			for _, mqV4 := range nodeDetailV4.Mq {
+				mqV5 = append(mqV5, &didProtoV5.MQ{
+					Ip:   mqV4.Ip,
+					Port: mqV4.Port,
+				})
+			}
+			nodeDetailV5 := didProtoV5.NodeDetail{
+				PublicKey:                              nodeDetailV4.PublicKey,
+				MasterPublicKey:                        nodeDetailV4.MasterPublicKey,
+				NodeName:                               nodeDetailV4.NodeName,
+				Role:                                   nodeDetailV4.Role,
+				MaxIal:                                 nodeDetailV4.MaxIal,
+				MaxAal:                                 nodeDetailV4.MaxAal,
+				Mq:                                     mqV5,
+				Active:                                 nodeDetailV4.Active,
+				ProxyNodeId:                            nodeDetailV4.ProxyNodeId,
+				ProxyConfig:                            nodeDetailV4.ProxyConfig,
+				SupportedRequestMessageDataUrlTypeList: nodeDetailV4.SupportedRequestMessageDataUrlTypeList,
+				IsIdpAgent:                             false,
+				UseWhitelist:                           false,
+				Whitelist:                              []string{},
+			}
+
+			nodeDetailV5Byte, err := utils.ProtoDeterministicMarshal(&nodeDetailV5)
+			if err != nil {
+				panic(err)
+			}
+			writeKeyValue(backupDataFileName, backupDataDir, key, nodeDetailV5Byte)
+			totalKV++
 		case strings.HasPrefix(string(key), "Response"):
 			// Add ErrorCode to every IdP response
 			var responseV4 didProtoV4.Response
