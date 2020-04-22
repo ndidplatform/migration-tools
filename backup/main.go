@@ -15,6 +15,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 
 	didProtoV4 "github.com/ndidplatform/migration-tools/protos/dataV4"
+	didProtoV5 "github.com/ndidplatform/migration-tools/protos/dataV5"
 	bcTm "github.com/tendermint/tendermint/blockchain"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	stateTm "github.com/tendermint/tendermint/state"
@@ -156,6 +157,27 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			writeKeyValue(backupDataFileName, backupDataDir, []byte(newReqDetailKey), reqDetailValue)
 			totalKV++
 			writeKeyValue(backupDataFileName, backupDataDir, key, newReqVersionsValue)
+			totalKV++
+		case strings.HasPrefix(string(key), "Response"):
+			// Add ErrorCode to every IdP response
+			var responseV4 didProtoV4.Response
+			err := proto.Unmarshal([]byte(value), &responseV4)
+			if err != nil {
+				panic(err)
+			}
+
+			responseV5 := didProtoV5.Response{
+				IdpId:          responseV4.IdpId,
+				ValidIal:       responseV4.ValidIal,
+				ValidSignature: responseV4.ValidSignature,
+				ErrorCode:      0,
+			}
+
+			responseV5Byte, err := utils.ProtoDeterministicMarshal(&responseV5)
+			if err != nil {
+				panic(err)
+			}
+			writeKeyValue(backupDataFileName, backupDataDir, key, responseV5Byte)
 			totalKV++
 		default:
 			writeKeyValue(backupDataFileName, backupDataDir, key, value)
