@@ -161,8 +161,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 		case strings.HasPrefix(string(key), "Response"):
 			// Add ErrorCode to every IdP response
 			var responseV4 didProtoV4.Response
-			err := proto.Unmarshal([]byte(value), &responseV4)
-			if err != nil {
+			if err := proto.Unmarshal([]byte(value), &responseV4); err != nil {
 				panic(err)
 			}
 
@@ -178,6 +177,44 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 				panic(err)
 			}
 			writeKeyValue(backupDataFileName, backupDataDir, key, responseV5Byte)
+			totalKV++
+		case strings.HasPrefix(string(key), "DataRequest"):
+			// Convert dataRequestV4 to dataRequestV5
+			var dataRequestV4 didProtoV4.DataRequest
+			if err := proto.Unmarshal([]byte(value), &dataRequestV4); err != nil {
+				panic(err)
+			}
+
+			dataRequestV5 := didProtoV5.DataRequest{
+				ServiceId:         dataRequestV4.ServiceId,
+				AsIdList:          dataRequestV4.AsIdList,
+				MinAs:             dataRequestV4.MinAs,
+				RequestParamsHash: dataRequestV4.RequestParamsHash,
+				ResponseList:      make([]*didProtoV5.ASResponse, 0, len(dataRequestV4.AnsweredAsIdList)),
+			}
+
+			// Generate ASResponse from every response in DataRequest
+			for _, as := range dataRequestV4.AnsweredAsIdList {
+				receivedData := false
+				for _, receivedDataAs := range dataRequestV4.ReceivedDataFromList {
+					if as == receivedDataAs {
+						receivedData = true
+						break
+					}
+				}
+				dataRequestV5.ResponseList = append(dataRequestV5.ResponseList, &didProtoV5.ASResponse{
+					AsId:         as,
+					Signed:       true,
+					ReceivedData: receivedData,
+					ErrorCode:    0,
+				})
+			}
+
+			dataRequestV5Byte, err := utils.ProtoDeterministicMarshal(&dataRequestV5)
+			if err != nil {
+				panic(err)
+			}
+			writeKeyValue(backupDataFileName, backupDataDir, key, dataRequestV5Byte)
 			totalKV++
 		default:
 			writeKeyValue(backupDataFileName, backupDataDir, key, value)
