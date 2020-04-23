@@ -44,7 +44,7 @@ func main() {
 	// Variable
 	ndidID := utils.GetEnv("NDID_NODE_ID", "NDID")
 	backupDataFileName := utils.GetEnv("BACKUP_DATA_FILENAME", "data")
-	backupDataDir := utils.GetEnv("BACKUP_DATA_DIR", "../backup_to_v5_data/")
+	backupDataDir := utils.GetEnv("BACKUP_DATA_DIR", "../_backup_to_v5_data/")
 	keyDir := utils.GetEnv("KEY_DIR", "../dev_keys/")
 	ndidKeyFile, err := os.Open(keyDir + "ndid")
 	if err != nil {
@@ -116,7 +116,7 @@ func main() {
 func initNDID(ndidKey *rsa.PrivateKey, ndidMasterKey *rsa.PrivateKey, ndidID string) {
 	// Variable
 	chainHistoryFileName := utils.GetEnv("CHAIN_HISTORY_FILENAME", "chain_history")
-	backupDataDir := utils.GetEnv("BACKUP_DATA_DIR", "../backup_to_v5_data/")
+	backupDataDir := utils.GetEnv("BACKUP_DATA_DIR", "../_backup_to_v5_data/")
 	chainHistoryData, err := ioutil.ReadFile(backupDataDir + chainHistoryFileName + ".txt")
 	if err != nil {
 		log.Fatal(err)
