@@ -381,7 +381,7 @@ func FWriteLn(filename string, data []byte, backupDataDir string) {
 	if err != nil {
 		panic(err)
 	}
-	_, err = f.WriteString("\r\n")
+	_, err = f.WriteString("\n")
 	if err != nil {
 		panic(err)
 	}

@@ -1,6 +1,6 @@
 # Backup data
 backup_DB/
-backup_Data/
+backup_data/
 
 # Dependency
 vendor/

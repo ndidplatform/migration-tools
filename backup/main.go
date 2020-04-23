@@ -67,7 +67,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 	backupValidatorFileName := utils.GetEnv("BACKUP_VALIDATORS_FILE_NAME", "validators")
 	chainHistoryFileName := utils.GetEnv("CHAIN_HISTORY_FILE_NAME", "chain_history")
 	backupBlockNumberStr := utils.GetEnv("BLOCK_NUMBER", "")
-	backupDataDir := utils.GetEnv("BACKUP_DATA_DIR", "backup_Data/")
+	backupDataDir := utils.GetEnv("BACKUP_DATA_DIR", "backup_data/")
 	if backupBlockNumberStr == "" {
 		backupBlockNumberStr = curChain.LatestBlockHeight
 	}
