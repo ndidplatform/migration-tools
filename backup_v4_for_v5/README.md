@@ -9,7 +9,7 @@ Backup data from v4, convert data to v5, and save to file
 ## Getting Started
 
 ```sh
-go run backup/main.go
+go run main.go
 ```
 
 **Environment variable options**
