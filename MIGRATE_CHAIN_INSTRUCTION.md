@@ -1,6 +1,6 @@
 # Prerequisites
 
-- Go version >= 1.9.2
+- Go version >= 1.13.0
 
   - [Install Go](https://golang.org/dl/) by following [installation instructions.](https://golang.org/doc/install)
   - Set GOPATH environment variable (https://github.com/golang/go/wiki/SettingGOPATH)
@@ -58,13 +58,13 @@ curl -skX POST https://IP:PORT/ndid/setLastBlock \
     ```sh
     cd migration-tools
 
-    TENDERMINT_ADDRESS=http://localhost:26000 \
-    DB_NAME=/home/support/ndid/ndid/data/ndid/abci/ \
+    TM_HOME=/home/support/ndid/ndid/tendermint/ \
+    ABCI_DB_DIR_PATH=/home/support/ndid/ndid/data/ndid/abci/ \
     go run backup/main.go
     ```
 
-    - TENDERMINT_ADDRESS คือ RPC Tendermint address
-    - DB_NAME คือ Directory stateDB ของ ABCI
+    - TM_HOME คือ Home directory ของ Tendermint
+    - ABCI_DB_DIR_PATH คือ Directory state DB ของ ABCI
 
 3. หลังจาก Run script backup เรียบร้อยแล้วสั่ง
 
