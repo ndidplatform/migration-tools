@@ -1,3 +1,25 @@
+/**
+ * Copyright (c) 2018, 2019 National Digital ID COMPANY LIMITED
+ *
+ * This file is part of NDID software.
+ *
+ * NDID is the free software: you can redistribute it and/or modify it under
+ * the terms of the Affero GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or any later
+ * version.
+ *
+ * NDID is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the Affero GNU General Public License for more details.
+ *
+ * You should have received a copy of the Affero GNU General Public License
+ * along with the NDID source code. If not, see https://www.gnu.org/licenses/agpl.txt.
+ *
+ * Please contact info@ndid.co.th for any further questions
+ *
+ */
+
 package main
 
 import (
@@ -9,16 +31,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ndidplatform/migration-tools/utils"
-
 	"github.com/BurntSushi/toml"
-	"github.com/gogo/protobuf/proto"
-
-	didProtoV4 "github.com/ndidplatform/migration-tools/protos/dataV4"
-	didProtoV5 "github.com/ndidplatform/migration-tools/protos/dataV5"
 	bcTm "github.com/tendermint/tendermint/blockchain"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	stateTm "github.com/tendermint/tendermint/state"
+
+	protosV4 "github.com/ndidplatform/migration-tools/protos_v4"
+	didProtoV4 "github.com/ndidplatform/migration-tools/protos_v4/data"
+	protosV5 "github.com/ndidplatform/migration-tools/protos_v5"
+	didProtoV5 "github.com/ndidplatform/migration-tools/protos_v5/data"
+
+	"github.com/ndidplatform/migration-tools/backup_v4_for_v5/utils"
 )
 
 func main() {
@@ -28,7 +51,7 @@ func main() {
 
 func getLastestTendermintData() (chainData chainHistoryDetail) {
 	curDir, _ := os.Getwd()
-	tmHome := utils.GetEnv("TM_HOME", path.Join(curDir, "../smart-contract/config/tendermint/IdP"))
+	tmHome := utils.GetEnv("TM_HOME", path.Join(curDir, "../../smart-contract/config/tendermint/IdP"))
 	configFile := path.Join(tmHome, "config/config.toml")
 	var config tomlConfig
 	if _, err := toml.DecodeFile(configFile, &config); err != nil {
@@ -67,7 +90,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 	backupValidatorFileName := utils.GetEnv("BACKUP_VALIDATORS_FILE_NAME", "validators")
 	chainHistoryFileName := utils.GetEnv("CHAIN_HISTORY_FILE_NAME", "chain_history")
 	backupBlockNumberStr := utils.GetEnv("BLOCK_NUMBER", "")
-	backupDataDir := utils.GetEnv("BACKUP_DATA_DIR", "backup_data/")
+	backupDataDir := utils.GetEnv("BACKUP_DATA_DIR", "../backup_to_v5_data/")
 	if backupBlockNumberStr == "" {
 		backupBlockNumberStr = curChain.LatestBlockHeight
 	}
@@ -134,7 +157,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 		case strings.Contains(string(key), "Request") && strings.Contains(string(key), "versions"):
 			// Versions of request
 			var keyVersionsV4 didProtoV4.KeyVersions
-			err := proto.Unmarshal([]byte(value), &keyVersionsV4)
+			err := protosV4.Unmarshal([]byte(value), &keyVersionsV4)
 			if err != nil {
 				panic(err)
 			}
@@ -147,7 +170,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			requestV4Value := db.Get([]byte(requestV4Key))
 
 			var requestV4 didProtoV4.Request
-			if err := proto.Unmarshal([]byte(requestV4Value), &requestV4); err != nil {
+			if err := protosV4.Unmarshal([]byte(requestV4Value), &requestV4); err != nil {
 				panic(err)
 			}
 
@@ -217,7 +240,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 				ChainId:             requestV4.ChainId,
 			}
 
-			requestV5Bytes, err := utils.ProtoDeterministicMarshal(&requestV5)
+			requestV5Bytes, err := protosV5.DeterministicMarshal(&requestV5)
 			if err != nil {
 				panic(err)
 			}
@@ -226,7 +249,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			var keyVersionsV5 didProtoV5.KeyVersions = didProtoV5.KeyVersions{
 				Versions: append(make([]int64, 0), 1),
 			}
-			newReqVersionsValue, err := utils.ProtoDeterministicMarshal(&keyVersionsV5)
+			newReqVersionsValue, err := protosV5.DeterministicMarshal(&keyVersionsV5)
 			if err != nil {
 				panic(err)
 			}
@@ -239,7 +262,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 		case strings.HasPrefix(string(key), "NodeID"):
 			// Add information (IdpAgent, UseWhitelist, Whitelist) to every node
 			var nodeDetailV4 didProtoV4.NodeDetail
-			if err := proto.Unmarshal([]byte(value), &nodeDetailV4); err != nil {
+			if err := protosV4.Unmarshal([]byte(value), &nodeDetailV4); err != nil {
 				panic(err)
 			}
 
@@ -267,7 +290,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 				Whitelist:                              []string{},
 			}
 
-			nodeDetailV5Byte, err := utils.ProtoDeterministicMarshal(&nodeDetailV5)
+			nodeDetailV5Byte, err := protosV5.DeterministicMarshal(&nodeDetailV5)
 			if err != nil {
 				panic(err)
 			}

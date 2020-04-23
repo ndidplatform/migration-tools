@@ -37,9 +37,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-	protoTm "github.com/ndidplatform/migration-tools/protos/tendermint"
 	"github.com/tendermint/tendermint/libs/common"
+
+	protosV5 "github.com/ndidplatform/migration-tools/protos_v5"
+	protoTm "github.com/ndidplatform/migration-tools/protos_v5/tendermint"
 )
 
 var (
@@ -52,19 +53,6 @@ type KeyValue struct {
 }
 
 var tendermintAddr = GetEnv("TENDERMINT_ADDRESS", "http://localhost:45000")
-
-func ProtoDeterministicMarshal(m proto.Message) ([]byte, error) {
-	var b proto.Buffer
-	b.SetDeterministic(true)
-	if err := b.Marshal(m); err != nil {
-		return nil, err
-	}
-	retBytes := b.Bytes()
-	if retBytes == nil {
-		retBytes = make([]byte, 0)
-	}
-	return retBytes, nil
-}
 
 func GetEnv(key, defaultValue string) string {
 	value, exists := os.LookupEnv(key)
@@ -107,7 +95,7 @@ func CallTendermint(fnName []byte, param []byte, nonce []byte, signature []byte,
 	tx.Signature = signature
 	tx.NodeId = string(nodeID)
 
-	txByte, err := proto.Marshal(&tx)
+	txByte, err := protosV5.Marshal(&tx)
 	if err != nil {
 		log.Printf("err: %s", err.Error())
 	}

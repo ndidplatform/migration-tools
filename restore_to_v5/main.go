@@ -1,3 +1,25 @@
+/**
+ * Copyright (c) 2018, 2019 National Digital ID COMPANY LIMITED
+ *
+ * This file is part of NDID software.
+ *
+ * NDID is the free software: you can redistribute it and/or modify it under
+ * the terms of the Affero GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or any later
+ * version.
+ *
+ * NDID is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the Affero GNU General Public License for more details.
+ *
+ * You should have received a copy of the Affero GNU General Public License
+ * along with the NDID source code. If not, see https://www.gnu.org/licenses/agpl.txt.
+ *
+ * Please contact info@ndid.co.th for any further questions
+ *
+ */
+
 package main
 
 import (
@@ -13,8 +35,8 @@ import (
 	"os"
 	"time"
 
-	did "github.com/ndidplatform/migration-tools/didParam"
-	"github.com/ndidplatform/migration-tools/utils"
+	did "github.com/ndidplatform/migration-tools/restore_to_v5/did"
+	"github.com/ndidplatform/migration-tools/restore_to_v5/utils"
 	"github.com/tendermint/tendermint/libs/common"
 )
 
@@ -22,8 +44,8 @@ func main() {
 	// Variable
 	ndidID := utils.GetEnv("NDID_NODE_ID", "NDID")
 	backupDataFileName := utils.GetEnv("BACKUP_DATA_FILENAME", "data")
-	backupDataDir := utils.GetEnv("BACKUP_DATA_DIR", "backup_data/")
-	keyDir := utils.GetEnv("KEY_DIR", "key/")
+	backupDataDir := utils.GetEnv("BACKUP_DATA_DIR", "../backup_to_v5_data/")
+	keyDir := utils.GetEnv("KEY_DIR", "../dev_keys/")
 	ndidKeyFile, err := os.Open(keyDir + "ndid")
 	if err != nil {
 		log.Fatal(err)
@@ -94,7 +116,7 @@ func main() {
 func initNDID(ndidKey *rsa.PrivateKey, ndidMasterKey *rsa.PrivateKey, ndidID string) {
 	// Variable
 	chainHistoryFileName := utils.GetEnv("CHAIN_HISTORY_FILENAME", "chain_history")
-	backupDataDir := utils.GetEnv("BACKUP_DATA_DIR", "backup_data/")
+	backupDataDir := utils.GetEnv("BACKUP_DATA_DIR", "../backup_to_v5_data/")
 	chainHistoryData, err := ioutil.ReadFile(backupDataDir + chainHistoryFileName + ".txt")
 	if err != nil {
 		log.Fatal(err)
