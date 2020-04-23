@@ -133,21 +133,21 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			totalKV++
 		case strings.Contains(string(key), "Request") && strings.Contains(string(key), "versions"):
 			// Versions of request
-			var keyVersions didProtoV4.KeyVersions
-			err := proto.Unmarshal([]byte(value), &keyVersions)
+			var keyVersionsV4 didProtoV4.KeyVersions
+			err := proto.Unmarshal([]byte(value), &keyVersionsV4)
 			if err != nil {
 				panic(err)
 			}
-			lastVer := strconv.FormatInt(keyVersions.Versions[len(keyVersions.Versions)-1], 10)
-			partOfKey := strings.Split(string(key), "|")
-			reqID := partOfKey[1]
+			latestVersion := strconv.FormatInt(keyVersionsV4.Versions[len(keyVersionsV4.Versions)-1], 10)
+			keyParts := strings.Split(string(key), "|")
+			requestID := keyParts[1]
 
 			// Get last version of request detail
-			reqDetailKey := "Request" + "|" + reqID + "|" + lastVer
-			reqDetailValue := db.Get([]byte(reqDetailKey))
+			requestV4Key := "Request" + "|" + requestID + "|" + latestVersion
+			requestV4Value := db.Get([]byte(requestV4Key))
 
 			var requestV4 didProtoV4.Request
-			if err := proto.Unmarshal([]byte(reqDetailValue), &requestV4); err != nil {
+			if err := proto.Unmarshal([]byte(requestV4Value), &requestV4); err != nil {
 				panic(err)
 			}
 
@@ -223,12 +223,14 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 			}
 
 			// Set to 1 version
-			keyVersions.Versions = append(make([]int64, 0), 1)
-			newReqVersionsValue, err := utils.ProtoDeterministicMarshal(&keyVersions)
+			var keyVersionsV5 didProtoV5.KeyVersions = didProtoV5.KeyVersions{
+				Versions: append(make([]int64, 0), 1),
+			}
+			newReqVersionsValue, err := utils.ProtoDeterministicMarshal(&keyVersionsV5)
 			if err != nil {
 				panic(err)
 			}
-			newReqDetailKey := "Request" + "|" + reqID + "|" + "1"
+			newReqDetailKey := "Request" + "|" + requestID + "|" + "1"
 			// Write request detail and Version of request detail
 			writeKeyValue(backupDataFileName, backupDataDir, []byte(newReqDetailKey), requestV5Bytes)
 			totalKV++
