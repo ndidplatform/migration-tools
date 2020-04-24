@@ -1,6 +1,6 @@
-# Backup from v4 for v5
+# Backup from v3 for v4
 
-Backup data from v4, convert data to v5, and save to file
+Backup data from v3, convert data to v4, and save to file
 
 ## Prerequisites
 

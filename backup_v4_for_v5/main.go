@@ -84,7 +84,7 @@ func readStateDBAndWriteToFile(curChain chainHistoryDetail) {
 	// Variable
 	curDir, _ := os.Getwd()
 	dbType := utils.GetEnv("ABCI_DB_TYPE", "goleveldb")
-	dbDir := utils.GetEnv("ABCI_DB_DIR_PATH", path.Join(curDir, "../smart-contract/DB1"))
+	dbDir := utils.GetEnv("ABCI_DB_DIR_PATH", path.Join(curDir, "../../smart-contract/DB1"))
 	dbName := "didDB"
 	backupDataFileName := utils.GetEnv("BACKUP_DATA_FILE_NAME", "data")
 	backupValidatorFileName := utils.GetEnv("BACKUP_VALIDATORS_FILE_NAME", "validators")
