@@ -17,7 +17,7 @@
 
 ## Disable chain
 
-1. SetLastBlock ผ่าน NDID API path POST `/setLastBlock`
+1. SetLastBlock ผ่าน NDID API path POST `/set_last_block` หรือ `/setLastBlock` สำหรับ version เก่า
 
 ```sh
 body
@@ -30,7 +30,7 @@ body
 หรือ
 
 ```sh
-curl -skX POST https://IP:PORT/ndid/setLastBlock \
+curl -skX POST https://IP:PORT/ndid/set_last_block \
     -H "Content-Type: application/json" \
     -d "{\"block_height\":0}" \
     -w '%{http_code}' \
@@ -41,13 +41,19 @@ curl -skX POST https://IP:PORT/ndid/setLastBlock \
 
 ## Backup data
 
-1. Stop container ของ ABCI
+1. Save/Write down NDID node ID(s), master public key, and public key. These values can be queried using GET `/utility/nodes/<NDID_NODE_ID>`
+
+2. Stop container ของ ABCI
 
    ```sh
    docker-compose stop
    ```
 
-2. Run script จาก `migration-tools` เพื่อ backup ข้อมูลจาก state DB ของ ABCI
+3. Backup data directories and files of the current chain
+
+4. Run script จาก `migration-tools` เพื่อ convert และ backup ข้อมูลจาก state DB ของ ABCI ลงไฟล์
+
+   Example:
 
    ```sh
    cd migration-tools/backup_VERSION_to_VERSION
@@ -60,13 +66,13 @@ curl -skX POST https://IP:PORT/ndid/setLastBlock \
    - TM_HOME คือ Home directory ของ Tendermint
    - ABCI_DB_DIR_PATH คือ Directory state DB ของ ABCI
 
-3. หลังจาก Run script backup เรียบร้อยแล้วสั่ง
+5. หลังจาก Run script backup เรียบร้อยแล้วสั่ง
 
    ```sh
    docker-compose down
    ```
 
-4. เพื่อความปลอดภัย Backup directory ที่ mount ออกมาจาก container ABCI
+6. เพื่อความปลอดภัย Backup directory ที่ mount ออกมาจาก container ABCI
 
 ## Remove previous chain data
 
@@ -78,32 +84,47 @@ curl -skX POST https://IP:PORT/ndid/setLastBlock \
 
 2. ลบ stateDB ของ ABCI
 
+   Example:
+
    ```sh
    rm -rf /home/support/ndid/ndid/data/ndid/abci/didDB.db
    ```
 
+3. (Optional) ลบ/ล้าง redis cache ของ API
+
 ## Restore data
 
 1. Pull docker image version ใหม่
-2. เอา `config.toml` และ `genesis` อันใหม่ไปวางใน directory `config`
+
+2. เอา `config.toml` และ `genesis.json` อันใหม่ไปวางใน directory `config` ที่ Tendermint hone directory
+
 3. แก้ `TM_P2P_PORT` ของ tendermint ใน `.env` file เพื่อไม่ให้ node อื่นต่อเข้ามาได้ระหว่าง restore
+
 4. เปิด docker container เฉพาะของ ABCI ขึ้นมาเพื่อจะทำการ restore
-5. Copy `master private key` ของ NDID ไปวางไว้ที่ `$GOPATH/src/github.com/ndidplatform/migration-tools/key/` ตั้งชื่อไฟล์ว่า `ndid_master` และ Copy `private key` ของ NDID ไปวางไว้ที่ `$GOPATH/src/github.com/ndidplatform/migration-tools/key/` ตั้งชื่อไฟล์ว่า `ndid`
+
+5. Copy `master private key` ของ NDID ไปวางไว้ที่ `$GOPATH/src/github.com/ndidplatform/migration-tools/key/` ตั้งชื่อไฟล์ว่า `ndid_master` และ Copy `private key` ของ NDID ไปวางไว้ที่ `$GOPATH/src/github.com/ndidplatform/migration-tools/key/` ตั้งชื่อไฟล์ว่า `ndid` (ถ้าใช้ external key service เช่น HSM ให้ใช้ key ใดๆก่อนก็ได้ แล้วสั่งเปลี่ยน public key หลัง restore สำเร็จ)
+
 6. Run script จาก `migration-tools` เพื่อ restore ข้อมูล
+
+   Example:
 
    ```sh
    cd migration-tools/restore_to_VERSION
 
-   NDID_NODE_ID=ndid1 TENDERMINT_ADDRESS=http://localhost:26000 go run main.go
+   NDID_NODE_ID=<NDID_NODE_ID> TENDERMINT_ADDRESS=http://localhost:26000 go run main.go
    ```
 
    - NDID_NODE_ID คือ ชื่อ node_id ของ NDID ที่จะใช้ initialize/register
    - TENDERMINT_ADDRESS คือ RPC Tendermint address
 
-7. หลักจาก restore เสร็จเรียบร้อยแล้ว stop docker container ของ ABCI
-8. แก้ `TM_P2P_PORT` ของ tendermint ใน `.env` file เพื่อให้ node อื่น ๆ สามารถต่อเข้ามาได้
+7. หลังจาก restore เสร็จเรียบร้อยแล้ว stop docker container ของ ABCI
+
+8. แก้ `TM_P2P_PORT` ของ tendermint ใน `.env` file คืนค่าเดิม เพื่อให้ node อื่น ๆ สามารถต่อเข้ามาได้
+
 9. เปิด docker container (ABCI, API และ Redis)
 
 ```sh
 docker-compose up
 ```
+
+10. (Optional) Set NDID node master public key and public key
