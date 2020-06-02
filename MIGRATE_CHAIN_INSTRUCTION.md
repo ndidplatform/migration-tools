@@ -56,15 +56,15 @@ curl -skX POST https://IP:PORT/ndid/set_last_block \
    Example:
 
    ```sh
-   cd migration-tools/backup_VERSION_to_VERSION
+   cd migration-tools
 
    TM_HOME=/home/support/ndid/ndid/tendermint/ \
    ABCI_DB_DIR_PATH=/home/support/ndid/ndid/data/ndid/abci/ \
-   go run main.go
+   go run main.go convert-and-backup 4 5
    ```
 
-   - TM_HOME คือ Home directory ของ Tendermint
-   - ABCI_DB_DIR_PATH คือ Directory state DB ของ ABCI
+   - `TM_HOME` คือ Home directory ของ Tendermint
+   - `ABCI_DB_DIR_PATH` คือ Directory state DB ของ ABCI
 
 5. หลังจาก Run script backup เรียบร้อยแล้วสั่ง
 
@@ -109,13 +109,13 @@ curl -skX POST https://IP:PORT/ndid/set_last_block \
    Example:
 
    ```sh
-   cd migration-tools/restore_to_VERSION
+   cd migration-tools
 
-   NDID_NODE_ID=<NDID_NODE_ID> TENDERMINT_ADDRESS=http://localhost:26000 go run main.go
+   NDID_NODE_ID=<NDID_NODE_ID> TENDERMINT_ADDRESS=http://localhost:26000 go run main.go restore 5
    ```
 
-   - NDID_NODE_ID คือ ชื่อ node_id ของ NDID ที่จะใช้ initialize/register
-   - TENDERMINT_ADDRESS คือ RPC Tendermint address
+   - `NDID_NODE_ID` คือ ชื่อ node_id ของ NDID ที่จะใช้ initialize/register
+   - `TENDERMINT_RPC_ADDRESS` คือ Tendermint RPC address
 
 7. หลังจาก restore เสร็จเรียบร้อยแล้ว stop docker container ของ ABCI
 

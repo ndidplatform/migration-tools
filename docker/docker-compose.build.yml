@@ -1,0 +1,10 @@
+version: '3.3'
+services:
+  migration-tools:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+      labels:
+        build.commit: ${BUILD_COMMIT}
+        build.date: ${BUILD_DATE}
+    image: ${REPO_NAME:-ndidplatform}/migration-tools:${DOCKER_TAG:-latest}
