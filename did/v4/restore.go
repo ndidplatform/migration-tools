@@ -78,7 +78,7 @@ func Restore(
 	if err != nil {
 		return err
 	}
-	file, err := os.Open(backupDataDir + backupDataFileName + ".txt")
+	file, err := os.Open(backupDataDir + backupDataFileName)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func initNDID(
 	chainHistoryFileName string,
 	tendermintRPCAddress string,
 ) (err error) {
-	chainHistoryData, err := ioutil.ReadFile(backupDataDir + chainHistoryFileName + ".txt")
+	chainHistoryData, err := ioutil.ReadFile(backupDataDir + chainHistoryFileName)
 	if err != nil {
 		return err
 	}
