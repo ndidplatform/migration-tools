@@ -60,7 +60,6 @@ func GetTendermintInfo(tmHome string) (tendermintStateInfo *TendermintStateInfo,
 	log.Printf("Latest Block Height: %d\n", tendermintStateInfo.LatestBlockHeight)
 	log.Printf("Latest Block Hash: %s\n", strings.ToUpper(hex.EncodeToString(tendermintStateInfo.LatestBlockHash)))
 	log.Printf("Latest App Hash: %s\n", strings.ToUpper(hex.EncodeToString(tendermintStateInfo.LatestAppHash)))
-	log.Println("")
 
 	return tendermintStateInfo, nil
 }
