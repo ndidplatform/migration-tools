@@ -28,6 +28,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -109,6 +110,14 @@ func convertAndBackupStateDBData(fromVersion string, toVersion string) (err erro
 		}
 	}
 
+	backupDataDirectoryAbsolutePath, err := filepath.Abs(backupDataDirectoryPath)
+	if err != nil {
+		log.Println("backup directory:", backupDataDirectoryPath)
+	} else {
+		log.Println("backup directory:", backupDataDirectoryAbsolutePath)
+	}
+	log.Println("convert and backup done")
+
 	return nil
 }
 
@@ -121,7 +130,7 @@ func loopConvert(
 	backupChainHistoryFilename string,
 	backupDataFilename string,
 ) (err error) {
-	log.Println("version:", stateDBDataVersions[i])
+	log.Println("converting version:", stateDBDataVersions[i], "to version:", stateDBDataVersions[i+1])
 
 	var tempInputDb *leveldb.DB
 	var dbGet func(key []byte) (value []byte, err error)
@@ -141,6 +150,8 @@ func loopConvert(
 		log.Println("read from input DB")
 	}
 
+	var backupKeyCount int64 = 0
+
 	var saveNewChainHistory func(chainHistory []byte) (err error)
 	var saveKeyValue func(key []byte, value []byte) (err error)
 
@@ -156,6 +167,7 @@ func loopConvert(
 			if err != nil {
 				return err
 			}
+			backupKeyCount++
 			return nil
 		}
 		saveKeyValue = func(key, value []byte) (err error) {
@@ -173,6 +185,7 @@ func loopConvert(
 			if err != nil {
 				return err
 			}
+			backupKeyCount++
 			return nil
 		}
 	} else {
@@ -196,6 +209,7 @@ func loopConvert(
 			if err != nil {
 				return err
 			}
+			backupKeyCount++
 			return nil
 		}
 		saveKeyValue = func(key, value []byte) (err error) {
@@ -209,6 +223,7 @@ func loopConvert(
 			if err != nil {
 				return err
 			}
+			backupKeyCount++
 			return nil
 		}
 	}
@@ -310,6 +325,8 @@ func loopConvert(
 	if err != nil {
 		return err
 	}
+
+	log.Println("total backup key count:", backupKeyCount)
 
 	return nil
 }
