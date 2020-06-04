@@ -111,11 +111,15 @@ curl -skX POST https://IP:PORT/ndid/set_last_block \
    ```sh
    cd migration-tools
 
-   NDID_NODE_ID=<NDID_NODE_ID> TENDERMINT_ADDRESS=http://localhost:26000 go run main.go restore 5
+   NDID_NODE_ID=<NDID_NODE_ID> \
+   TENDERMINT_ADDRESS=http://localhost:26000 \
+   BACKUP_DATA_DIR=<PATH_TO_BACKUP_DIRECTORY> \
+   go run main.go restore 5
    ```
 
    - `NDID_NODE_ID` คือ ชื่อ node_id ของ NDID ที่จะใช้ initialize/register
    - `TENDERMINT_RPC_ADDRESS` คือ Tendermint RPC address
+   - `BACKUP_DATA_DIR` คือ directory ที่มีข้อมูลที่ convert แล้วเป็น JSON อยู่ในรูปแบบ text file
 
 7. หลังจาก restore เสร็จเรียบร้อยแล้ว stop docker container ของ ABCI
 

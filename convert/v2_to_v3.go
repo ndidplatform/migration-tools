@@ -50,11 +50,6 @@ func ConvertInputStateDBDataV2ToV3AndBackup(
 	dbDir := viper.GetString("ABCI_DB_DIR_PATH")
 	// backupBlockNumberStr := viper.GetString("BLOCK_NUMBER")
 
-	// Delete existing backup files
-	// utils.DeleteFile(backupDataDir + backupDataFileName + ".txt")
-	// utils.DeleteFile(backupDataDir + backupValidatorFileName + ".txt")
-	// utils.DeleteFile(backupDataDir + chainHistoryFileName + ".txt")
-
 	v2StateDB := v2.GetStateDB(dbType, dbDir)
 	ndidNodeID, err := v2StateDB.Get([]byte("MasterNDID"))
 	if err != nil {

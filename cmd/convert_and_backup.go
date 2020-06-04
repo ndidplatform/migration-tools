@@ -28,6 +28,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -35,6 +36,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 
 	"github.com/ndidplatform/migration-tools/convert"
+	"github.com/ndidplatform/migration-tools/rand"
 	"github.com/ndidplatform/migration-tools/utils"
 )
 
@@ -48,7 +50,14 @@ type BackupKeyValue struct {
 }
 
 func convertAndBackupStateDBData(fromVersion string, toVersion string) (err error) {
-	defer cleanup()
+	now := time.Now()
+
+	nowStr := now.Format("20060102_150405")
+	randomStr := rand.Str(7)
+
+	instanceDirName := nowStr + "_" + randomStr
+
+	defer cleanup(instanceDirName)
 
 	var stateDBDataFromVersionIndex int = -1
 	var stateDBDataToVersionIndex int = -1
@@ -72,6 +81,7 @@ func convertAndBackupStateDBData(fromVersion string, toVersion string) (err erro
 	}
 
 	backupDataDirectoryPath := viper.GetString("BACKUP_DATA_DIR")
+	backupDataDirectoryPath = path.Join(backupDataDirectoryPath, instanceDirName)
 	utils.CreateDirIfNotExist(backupDataDirectoryPath)
 
 	backupDataFilename := viper.GetString("BACKUP_DATA_FILENAME")
@@ -89,12 +99,12 @@ func convertAndBackupStateDBData(fromVersion string, toVersion string) (err erro
 			i,
 			stateDBDataFromVersionIndex,
 			stateDBDataToVersionIndex,
+			instanceDirName,
 			backupDataDirectoryPath,
 			backupChainHistoryFilename,
 			backupDataFilename,
 		)
 		if err != nil {
-			// TODO: clean up
 			return err
 		}
 	}
@@ -106,6 +116,7 @@ func loopConvert(
 	i int,
 	stateDBDataFromVersionIndex int,
 	stateDBDataToVersionIndex int,
+	instanceDirName string,
 	backupDataDirectoryPath string,
 	backupChainHistoryFilename string,
 	backupDataFilename string,
@@ -117,7 +128,7 @@ func loopConvert(
 	if i != stateDBDataFromVersionIndex {
 		log.Println("read from temp DB")
 
-		tempInputDb, err = leveldb.OpenFile(path.Join(os.TempDir(), tmpDirectoryName, "db_version_"+stateDBDataVersions[i]), nil) // TODO: random string prefix on each run (prevent overwrite)
+		tempInputDb, err = leveldb.OpenFile(path.Join(os.TempDir(), tmpDirectoryName, instanceDirName, "db_version_"+stateDBDataVersions[i]), nil) // TODO: random string prefix on each run (prevent overwrite)
 		if err != nil {
 			return err
 		}
@@ -168,7 +179,7 @@ func loopConvert(
 		// Write to Temp DB
 		log.Println("write to temp DB")
 
-		tempOutputDb, err := leveldb.OpenFile(path.Join(os.TempDir(), tmpDirectoryName, "db_version_"+stateDBDataVersions[i+1]), nil) // TODO: random string prefix on each run (prevent overwrite)
+		tempOutputDb, err := leveldb.OpenFile(path.Join(os.TempDir(), tmpDirectoryName, instanceDirName, "db_version_"+stateDBDataVersions[i+1]), nil) // TODO: random string prefix on each run (prevent overwrite)
 		if err != nil {
 			return err
 		}
@@ -303,8 +314,8 @@ func loopConvert(
 	return nil
 }
 
-func cleanup() {
-	utils.DeleteDirAndFiles(path.Join(os.TempDir(), tmpDirectoryName))
+func cleanup(instanceDirName string) {
+	utils.DeleteDirAndFiles(path.Join(os.TempDir(), tmpDirectoryName, instanceDirName))
 }
 
 var convertAndBackupCmd = &cobra.Command{
