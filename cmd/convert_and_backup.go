@@ -45,6 +45,9 @@ const tmpDirectoryName = "ndid_migrate"
 
 var stateDBDataVersions []string = []string{"1", "2", "3", "4", "5"}
 
+const logKeysWritten = false
+const logKeysWrittenEvery = 100000
+
 type BackupKeyValue struct {
 	Key   []byte `json:"key"`
 	Value []byte `json:"value"`
@@ -168,6 +171,9 @@ func loopConvert(
 				return err
 			}
 			backupKeyCount++
+			if logKeysWritten && backupKeyCount%logKeysWrittenEvery == 0 {
+				log.Println("keys written:", backupKeyCount)
+			}
 			return nil
 		}
 		saveKeyValue = func(key, value []byte) (err error) {
@@ -186,6 +192,9 @@ func loopConvert(
 				return err
 			}
 			backupKeyCount++
+			if logKeysWritten && backupKeyCount%logKeysWrittenEvery == 0 {
+				log.Println("keys written:", backupKeyCount)
+			}
 			return nil
 		}
 	} else {
@@ -203,13 +212,16 @@ func loopConvert(
 				[]byte("ChainHistoryInfo"), // TODO: get key from version module instead (support different version's key name)
 				chainHistory,
 				&opt.WriteOptions{
-					Sync: true,
+					// Sync: true,
 				},
 			)
 			if err != nil {
 				return err
 			}
 			backupKeyCount++
+			if logKeysWritten && backupKeyCount%logKeysWrittenEvery == 0 {
+				log.Println("keys written:", backupKeyCount)
+			}
 			return nil
 		}
 		saveKeyValue = func(key, value []byte) (err error) {
@@ -217,13 +229,16 @@ func loopConvert(
 				key,
 				value,
 				&opt.WriteOptions{
-					Sync: true,
+					// Sync: true,
 				},
 			)
 			if err != nil {
 				return err
 			}
 			backupKeyCount++
+			if logKeysWritten && backupKeyCount%logKeysWrittenEvery == 0 {
+				log.Println("keys written:", backupKeyCount)
+			}
 			return nil
 		}
 	}

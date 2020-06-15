@@ -25,6 +25,7 @@ package convert
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 	"strconv"
 	"strings"
 
@@ -60,6 +61,8 @@ func ConvertInputStateDBDataV4ToV5AndBackup(
 		return v4StateDB.Get(key)
 	}
 
+	var keysRead int64 = 0
+
 	itr, err := v4StateDB.Iterator(nil, nil)
 	if err != nil {
 		return err
@@ -80,7 +83,10 @@ func ConvertInputStateDBDataV4ToV5AndBackup(
 		if err != nil {
 			return err
 		}
+		keysRead++
 	}
+
+	log.Println("total key read:", keysRead)
 
 	return nil
 }
