@@ -307,8 +307,6 @@ func loopConvert(
 		if i == stateDBDataFromVersionIndex {
 			err = convert.ConvertInputStateDBDataV4ToV5AndBackup(saveNewChainHistory, saveKeyValue)
 		} else {
-			log.Println("read from temp DB")
-
 			iter := tempInputDb.NewIterator(nil, nil)
 			for iter.Next() {
 				key := iter.Key()
