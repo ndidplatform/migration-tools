@@ -24,6 +24,8 @@ package cmd
 
 import (
 	"errors"
+	"log"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -34,12 +36,16 @@ import (
 )
 
 func restore(toVersion string) (err error) {
+	startTime := time.Now()
+
 	ndidID := viper.GetString("NDID_NODE_ID")
 	backupDataDir := viper.GetString("BACKUP_DATA_DIR")
 	backupDataFileName := viper.GetString("BACKUP_DATA_FILENAME")
 	chainHistoryFileName := viper.GetString("CHAIN_HISTORY_FILENAME")
 	keyDir := viper.GetString("KEY_DIR")
-	tendermintRPCAddress := viper.GetString("TENDERMINT_RPC_ADDRESS")
+	tendermintRPCHost := viper.GetString("TENDERMINT_RPC_HOST")
+	tendermintRPCPort := viper.GetString("TENDERMINT_RPC_PORT")
+	tendermintRPCAddress := "http://" + tendermintRPCHost + ":" + tendermintRPCPort
 
 	switch toVersion {
 	case "3":
@@ -67,11 +73,19 @@ func restore(toVersion string) (err error) {
 			backupDataFileName,
 			chainHistoryFileName,
 			keyDir,
-			tendermintRPCAddress,
+			tendermintRPCHost,
+			tendermintRPCPort,
 		)
 	default:
 		return errors.New("unsupported Tendermint version")
 	}
+	if err != nil {
+		return err
+	}
+
+	log.Println("init and restore done")
+	log.Println("time used:", time.Since(startTime))
+
 	return err
 }
 
@@ -87,7 +101,8 @@ var restoreCmd = &cobra.Command{
 		// viper.SetDefault("BACKUP_VALIDATORS_FILENAME", "validators")
 		viper.SetDefault("CHAIN_HISTORY_FILENAME", "chain_history")
 		viper.SetDefault("KEY_DIR", "./dev_keys/")
-		viper.SetDefault("TENDERMINT_RPC_ADDRESS", "http://localhost:45000")
+		viper.SetDefault("TENDERMINT_RPC_HOST", "localhost")
+		viper.SetDefault("TENDERMINT_RPC_PORT", "45000")
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return restore(args[0])

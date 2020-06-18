@@ -29,13 +29,17 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"time"
 
+	protoTm "github.com/ndidplatform/migration-tools/did/v5/protos/tendermint"
+	"github.com/ndidplatform/migration-tools/did/v5/tm_client"
+	"github.com/ndidplatform/migration-tools/proto"
 	tmRand "github.com/ndidplatform/migration-tools/rand"
 
+	_log "github.com/ndidplatform/migration-tools/log"
 	"github.com/ndidplatform/migration-tools/utils"
 )
 
@@ -45,7 +49,8 @@ func Restore(
 	backupDataFileName string,
 	chainHistoryFileName string,
 	keyDir string,
-	tendermintRPCAddress string,
+	tendermintRPCHost string,
+	tendermintRPCPort string,
 ) (err error) {
 	ndidKeyFile, err := os.Open(keyDir + "ndid")
 	if err != nil {
@@ -61,6 +66,26 @@ func Restore(
 		return err
 	}
 	defer ndidMasterKeyFile.Close()
+
+	logger, err := _log.NewLogger(&_log.Configuration{
+		EnableConsole:     true,
+		ConsoleLevel:      "info",
+		ConsoleJSONFormat: false,
+		Color:             true,
+	}, _log.InstanceGoLogger)
+	if err != nil {
+		return err
+	}
+	tmClient, err := tm_client.New(logger)
+	if err != nil {
+		return err
+	}
+	_, err = tmClient.Connect(tendermintRPCHost, tendermintRPCPort)
+	if err != nil {
+		return err
+	}
+	defer tmClient.Close()
+
 	dataMaster, err := ioutil.ReadAll(ndidMasterKeyFile)
 	if err != nil {
 		return err
@@ -68,12 +93,12 @@ func Restore(
 	ndidPrivKey := utils.GetPrivateKeyFromString(string(data))
 	ndidMasterPrivKey := utils.GetPrivateKeyFromString(string(dataMaster))
 	err = initNDID(
+		tmClient,
 		ndidPrivKey,
 		ndidMasterPrivKey,
 		ndidID,
 		backupDataDir,
 		chainHistoryFileName,
-		tendermintRPCAddress,
 	)
 	if err != nil {
 		return err
@@ -84,7 +109,7 @@ func Restore(
 	}
 	defer file.Close()
 
-	maximumBytes := 100000
+	estimatedTxSizeBytes := 300000
 	size := 0
 	count := 0
 	nTx := 0
@@ -103,31 +128,27 @@ func Restore(
 		count++
 		size += len(kv.Key) + len(kv.Value)
 		nTx++
-		if size > maximumBytes {
-			err = setInitData(param, ndidPrivKey, ndidID, tendermintRPCAddress)
+		if size > estimatedTxSizeBytes {
+			err = setInitData(tmClient, param, ndidPrivKey, ndidID)
 			if err != nil {
 				return err
 			}
-			fmt.Print("Number of kv in param: ")
-			fmt.Println(count)
-			fmt.Print("Total number of kv: ")
-			fmt.Println(nTx)
+			log.Printf("Number of kv in param: %d\n", count)
+			log.Printf("Total number of kv: %d\n", nTx)
 			count = 0
 			size = 0
 			param.KVList = make([]KeyValue, 0)
 		}
 	}
 	if count > 0 {
-		err = setInitData(param, ndidPrivKey, ndidID, tendermintRPCAddress)
+		err = setInitData(tmClient, param, ndidPrivKey, ndidID)
 		if err != nil {
 			return err
 		}
-		fmt.Print("Number of kv in param: ")
-		fmt.Println(count)
-		fmt.Print("Total number of kv: ")
-		fmt.Println(nTx)
+		log.Printf("Number of kv in param: %d\n", count)
+		log.Printf("Total number of kv: %d\n", nTx)
 	}
-	err = endInit(ndidPrivKey, ndidID, tendermintRPCAddress)
+	err = endInit(tmClient, ndidPrivKey, ndidID)
 	if err != nil {
 		return err
 	}
@@ -136,12 +157,12 @@ func Restore(
 }
 
 func initNDID(
+	tmClient *tm_client.TmClient,
 	ndidKey *rsa.PrivateKey,
 	ndidMasterKey *rsa.PrivateKey,
 	ndidID string,
 	backupDataDir string,
 	chainHistoryFileName string,
-	tendermintRPCAddress string,
 ) (err error) {
 	chainHistoryData, err := ioutil.ReadFile(backupDataDir + chainHistoryFileName)
 	if err != nil {
@@ -174,16 +195,36 @@ func initNDID(
 	pssh.Write(PSSmessage)
 	hashed := pssh.Sum(nil)
 	signature, err := rsa.SignPKCS1v15(rand.Reader, ndidKey, newhash, hashed)
-	result, err := CallTendermint(tendermintRPCAddress, []byte(fnName), paramJSON, []byte(nonce), signature, []byte(initNDIDparam.NodeID))
+
+	var tx protoTm.Tx
+	tx.Method = string(fnName)
+	tx.Params = string(paramJSON)
+	tx.Nonce = []byte(nonce)
+	tx.Signature = signature
+	tx.NodeId = string(initNDIDparam.NodeID)
+
+	txByte, err := proto.Marshal(&tx)
 	if err != nil {
 		return err
 	}
-	fmt.Println(result.Result.DeliverTx.Log)
+
+	// result, err := CallTendermint(tendermintRPCAddress, []byte(fnName), paramJSON, []byte(nonce), signature, []byte(initNDIDparam.NodeID))
+	result, err := tmClient.BroadcastTxCommit(txByte)
+	if err != nil {
+		return err
+	}
+
+	log.Println("InitNDID DeliverTx log:", result.DeliverTx.Log)
 
 	return nil
 }
 
-func setInitData(param SetInitDataParam, ndidKey *rsa.PrivateKey, ndidID string, tendermintRPCAddress string) (err error) {
+func setInitData(
+	tmClient *tm_client.TmClient,
+	param SetInitDataParam,
+	ndidKey *rsa.PrivateKey,
+	ndidID string,
+) (err error) {
 	paramJSON, err := json.Marshal(param)
 	if err != nil {
 		return err
@@ -198,18 +239,32 @@ func setInitData(param SetInitDataParam, ndidKey *rsa.PrivateKey, ndidID string,
 	pssh.Write(PSSmessage)
 	hashed := pssh.Sum(nil)
 	signature, err := rsa.SignPKCS1v15(rand.Reader, ndidKey, newhash, hashed)
-	result, err := CallTendermint(tendermintRPCAddress, []byte(fnName), paramJSON, []byte(nonce), signature, []byte(ndidID))
+
+	var tx protoTm.Tx
+	tx.Method = string(fnName)
+	tx.Params = string(paramJSON)
+	tx.Nonce = []byte(nonce)
+	tx.Signature = signature
+	tx.NodeId = ndidID
+
+	txByte, err := proto.Marshal(&tx)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("CheckTx log: %s\n", result.Result.CheckTx.Log)
-	fmt.Printf("DeliverTx log: %s\n", result.Result.DeliverTx.Log)
 
-	if result.Result.DeliverTx.Log != "success" {
+	// result, err := CallTendermint(tendermintRPCAddress, []byte(fnName), paramJSON, []byte(nonce), signature, []byte(ndidID))
+	result, err := tmClient.BroadcastTxCommit(txByte)
+	if err != nil {
+		return err
+	}
+	log.Printf("SetInitData CheckTx log: %s\n", result.CheckTx.Log)
+	log.Printf("SetInitData DeliverTx log: %s\n", result.DeliverTx.Log)
+
+	if result.DeliverTx.Log != "success" {
 		// pause 3 sec and retry again
-		fmt.Printf("Retry ...\n")
+		log.Printf("Retry...\n")
 		time.Sleep(3 * time.Second)
-		err = setInitData(param, ndidKey, ndidID, tendermintRPCAddress)
+		err = setInitData(tmClient, param, ndidKey, ndidID)
 		if err != nil {
 			return err
 		}
@@ -218,14 +273,17 @@ func setInitData(param SetInitDataParam, ndidKey *rsa.PrivateKey, ndidID string,
 	return nil
 }
 
-func endInit(ndidKey *rsa.PrivateKey, ndidID string, tendermintRPCAddress string) (err error) {
+func endInit(
+	tmClient *tm_client.TmClient,
+	ndidKey *rsa.PrivateKey,
+	ndidID string,
+) (err error) {
 	var param EndInitParam
 	paramJSON, err := json.Marshal(param)
 	if err != nil {
 		return err
 	}
 	fnName := "EndInit"
-	nodeID := ndidID
 	nonce := base64.StdEncoding.EncodeToString([]byte(tmRand.Str(12)))
 	tempPSSmessage := append([]byte(fnName), paramJSON...)
 	tempPSSmessage = append(tempPSSmessage, []byte(nonce)...)
@@ -235,11 +293,25 @@ func endInit(ndidKey *rsa.PrivateKey, ndidID string, tendermintRPCAddress string
 	pssh.Write(PSSmessage)
 	hashed := pssh.Sum(nil)
 	signature, err := rsa.SignPKCS1v15(rand.Reader, ndidKey, newhash, hashed)
-	result, err := CallTendermint(tendermintRPCAddress, []byte(fnName), paramJSON, []byte(nonce), signature, []byte(nodeID))
+
+	var tx protoTm.Tx
+	tx.Method = string(fnName)
+	tx.Params = string(paramJSON)
+	tx.Nonce = []byte(nonce)
+	tx.Signature = signature
+	tx.NodeId = ndidID
+
+	txByte, err := proto.Marshal(&tx)
 	if err != nil {
 		return err
 	}
-	fmt.Println(result.Result.DeliverTx.Log)
+
+	// result, err := CallTendermint(tendermintRPCAddress, []byte(fnName), paramJSON, []byte(nonce), signature, []byte(nodeID))
+	result, err := tmClient.BroadcastTxCommit(txByte)
+	if err != nil {
+		return err
+	}
+	log.Println("EndInit DeliverTx log:", result.DeliverTx.Log)
 
 	return nil
 }

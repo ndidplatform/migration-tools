@@ -54,12 +54,12 @@ type BackupKeyValue struct {
 }
 
 func convertAndBackupStateDBData(fromVersion string, toVersion string) (err error) {
-	now := time.Now()
+	startTime := time.Now()
 
-	nowStr := now.Format("20060102_150405")
+	startTimeStr := startTime.Format("20060102_150405")
 	randomStr := rand.Str(7)
 
-	instanceDirName := nowStr + "_" + randomStr
+	instanceDirName := startTimeStr + "_" + randomStr
 
 	defer cleanup(instanceDirName)
 
@@ -120,6 +120,7 @@ func convertAndBackupStateDBData(fromVersion string, toVersion string) (err erro
 		log.Println("backup directory:", backupDataDirectoryAbsolutePath)
 	}
 	log.Println("convert and backup done")
+	log.Println("time used:", time.Since(startTime))
 
 	return nil
 }
