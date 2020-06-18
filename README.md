@@ -31,8 +31,9 @@ CGO_ENABLED=1 CGO_LDFLAGS="-lsnappy" go run -tags "cleveldb" main.go
 
 *Specific to `restore` command*
 
-- `NDID_NODE_ID` : NDID node ID
-- `TENDERMINT_RPC_ADDRESS` : Tendermint RPC address
+- `NDID_NODE_ID` : NDID node ID [Default: `NDID`]
+- `TENDERMINT_RPC_HOST` : Tendermint RPC host [Default: `localhost`]
+- `TENDERMINT_RPC_PORT` : Tendermint RPC port [Default: `45000`]
 
 ## Migrate Data to a New Chain
 
