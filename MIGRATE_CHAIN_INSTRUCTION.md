@@ -63,6 +63,14 @@ curl -skX POST https://IP:PORT/ndid/set_last_block \
    go run main.go convert-and-backup 4 5
    ```
 
+   or run with C lib support for LevelDB (ในกรณีที่ DB ที่ต้องการ backup ใช้ cleveldb):
+
+   ```sh
+   TM_HOME=/home/support/ndid/ndid/tendermint/ \
+   ABCI_DB_DIR_PATH=/home/support/ndid/ndid/data/ndid/abci/ \
+   CGO_ENABLED=1 CGO_LDFLAGS="-lsnappy" go run -tags "cleveldb" main.go convert-and-backup 4 5
+   ```
+
    - `TM_HOME` คือ Home directory ของ Tendermint
    - `ABCI_DB_DIR_PATH` คือ Directory state DB ของ ABCI
 
