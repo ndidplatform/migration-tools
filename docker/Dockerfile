@@ -20,7 +20,7 @@ ENV CGO_LDFLAGS="-lsnappy"
 WORKDIR /ndidplatform/migration-tools
 RUN go build \
     -tags "cleveldb" \
-    -o ../build/migration-tools \
+    -o ./build/migration-tools
 
 
 FROM alpine:3.11
