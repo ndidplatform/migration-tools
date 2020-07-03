@@ -32,6 +32,7 @@ CGO_ENABLED=1 CGO_LDFLAGS="-lsnappy" go run -tags "cleveldb" main.go
 *Specific to `restore` command*
 
 - `NDID_NODE_ID` : NDID node ID [Default: `NDID`]
+- `KEY_DIR`: NDID node key directory path [Default: `./dev_keys/`]
 - `TENDERMINT_RPC_HOST` : Tendermint RPC host [Default: `localhost`]
 - `TENDERMINT_RPC_PORT` : Tendermint RPC port [Default: `45000`]
 
