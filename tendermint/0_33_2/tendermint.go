@@ -1,54 +1,65 @@
 package tendermint_0_33_2
 
-// TODO
+import (
+	"encoding/hex"
+	"log"
+	"path"
+	"strings"
 
-// type tomlConfig struct {
-// 	DBBackend string `toml:"db_backend"`
-// 	DBPath    string `toml:"db_dir"`
-// }
+	"github.com/BurntSushi/toml"
+	dbm "github.com/tendermint/tm-db"
 
-// type TendermintStateInfo struct {
-// 	ChainID           string
-// 	LatestBlockHeight int64
-// 	LatestBlockHash   []byte
-// 	LatestAppHash     []byte
-// }
+	"github.com/ndidplatform/migration-tools/tendermint/0_33_2/state"
+	"github.com/ndidplatform/migration-tools/tendermint/0_33_2/store"
+)
 
-// func GetTendermintInfo(tmHome string) (tendermintStateInfo *TendermintStateInfo, err error) {
-// 	configFile := path.Join(tmHome, "config/config.toml")
-// 	var config tomlConfig
-// 	if _, err = toml.DecodeFile(configFile, &config); err != nil {
-// 		return nil, err
-// 	}
-// 	dbDir := path.Join(tmHome, config.DBPath)
-// 	dbType := dbm.BackendType(config.DBBackend)
-// 	stateDB := dbm.NewDB("state", dbType, dbDir)
-// 	state, err := state.LoadState(stateDB)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+type tomlConfig struct {
+	DBBackend string `toml:"db_backend"`
+	DBPath    string `toml:"db_dir"`
+}
 
-// 	// fmt.Printf("state: %+v\n", state)
+type TendermintStateInfo struct {
+	ChainID           string
+	LatestBlockHeight int64
+	LatestBlockHash   []byte
+	LatestAppHash     []byte
+}
 
-// 	blockDB := dbm.NewDB("blockstore", dbType, dbDir)
-// 	blockMeta, err := block.LoadBlockMeta(blockDB, state.LastBlockHeight)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func GetTendermintInfo(tmHome string) (tendermintStateInfo *TendermintStateInfo, err error) {
+	configFile := path.Join(tmHome, "config/config.toml")
+	var config tomlConfig
+	if _, err = toml.DecodeFile(configFile, &config); err != nil {
+		return nil, err
+	}
+	dbDir := path.Join(tmHome, config.DBPath)
+	dbType := dbm.BackendType(config.DBBackend)
+	stateDB, err := dbm.NewDB("state", dbType, dbDir)
+	if err != nil {
+		return nil, err
+	}
+	state := state.LoadState(stateDB)
 
-// 	// fmt.Printf("blockMeta: %+v\n", blockMeta)
+	// fmt.Printf("state: %+v\n", state)
 
-// 	tendermintStateInfo = new(TendermintStateInfo)
-// 	tendermintStateInfo.ChainID = blockMeta.Header.ChainID
-// 	tendermintStateInfo.LatestBlockHeight = state.LastBlockHeight
-// 	tendermintStateInfo.LatestBlockHash = blockMeta.BlockID.Hash
-// 	tendermintStateInfo.LatestAppHash = blockMeta.Header.AppHash
+	blockDB, err := dbm.NewDB("blockstore", dbType, dbDir)
+	if err != nil {
+		return nil, err
+	}
+	blockMeta := store.LoadBlockMeta(blockDB, state.LastBlockHeight)
 
-//  log.Println("===== Tendermint State Info =====")
-// 	log.Printf("Chain ID: %s\n", tendermintStateInfo.ChainID)
-// 	log.Printf("Latest Block Height: %d\n", tendermintStateInfo.LatestBlockHeight)
-// 	log.Printf("Latest Block Hash: %s\n", strings.ToUpper(hex.EncodeToString(tendermintStateInfo.LatestBlockHash)))
-// 	log.Printf("Latest App Hash: %s\n", strings.ToUpper(hex.EncodeToString(tendermintStateInfo.LatestAppHash)))
+	// fmt.Printf("blockMeta: %+v\n", blockMeta)
 
-// 	return tendermintStateInfo, nil
-// }
+	tendermintStateInfo = new(TendermintStateInfo)
+	tendermintStateInfo.ChainID = blockMeta.Header.ChainID
+	tendermintStateInfo.LatestBlockHeight = state.LastBlockHeight
+	tendermintStateInfo.LatestBlockHash = blockMeta.BlockID.Hash
+	tendermintStateInfo.LatestAppHash = blockMeta.Header.AppHash
+
+	log.Println("===== Tendermint State Info =====")
+	log.Printf("Chain ID: %s\n", tendermintStateInfo.ChainID)
+	log.Printf("Latest Block Height: %d\n", tendermintStateInfo.LatestBlockHeight)
+	log.Printf("Latest Block Hash: %s\n", strings.ToUpper(hex.EncodeToString(tendermintStateInfo.LatestBlockHash)))
+	log.Printf("Latest App Hash: %s\n", strings.ToUpper(hex.EncodeToString(tendermintStateInfo.LatestAppHash)))
+
+	return tendermintStateInfo, nil
+}

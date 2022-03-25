@@ -43,7 +43,7 @@ import (
 
 const tmpDirectoryName = "ndid_migrate"
 
-var stateDBDataVersions []string = []string{"1", "2", "3", "4", "5"}
+var stateDBDataVersions []string = []string{"1", "2", "3", "4", "5", "6", "7"}
 
 const logKeysWritten = false
 const logKeysWrittenEvery = 100000
@@ -95,7 +95,7 @@ func convertAndBackupStateDBData(fromVersion string, toVersion string) (err erro
 
 	if fromVersion == toVersion {
 		// TODO: migrate from/to same version, no data structure conversion
-		return errors.New("Not supported yet")
+		return errors.New("not supported yet")
 	}
 
 	for i := stateDBDataFromVersionIndex; i < stateDBDataToVersionIndex; i++ {
@@ -247,7 +247,7 @@ func loopConvert(
 	switch stateDBDataVersions[i] {
 	case "1":
 		// TODO: v1 -> v2
-		return errors.New("Not supported yet")
+		return errors.New("not supported yet")
 	case "2":
 		if i == stateDBDataFromVersionIndex {
 			err = convert.ConvertInputStateDBDataV2ToV3AndBackup(saveNewChainHistory, saveKeyValue)
@@ -333,8 +333,36 @@ func loopConvert(
 			}
 		}
 	case "5":
-		// v5 -> v TBD
-		return errors.New("Not supported yet")
+		// v5 -> v6
+		return errors.New("not supported")
+	case "6":
+		if i == stateDBDataFromVersionIndex {
+			err = convert.ConvertInputStateDBDataV6ToV7AndBackup(saveNewChainHistory, saveKeyValue)
+		} else {
+			iter := tempInputDb.NewIterator(nil, nil)
+			for iter.Next() {
+				key := iter.Key()
+				value := iter.Value()
+
+				err = convert.ConvertStateDBDataV6ToV7(
+					key,
+					value,
+					"",
+					nil,
+					dbGet,
+					saveNewChainHistory,
+					saveKeyValue,
+				)
+				if err != nil {
+					return err
+				}
+			}
+			iter.Release()
+			err = iter.Error()
+			if err != nil {
+				return err
+			}
+		}
 	}
 	if err != nil {
 		return err

@@ -33,6 +33,7 @@ import (
 	tendermint_0_26_4 "github.com/ndidplatform/migration-tools/tendermint/0_26_4"
 	tendermint_0_30_2 "github.com/ndidplatform/migration-tools/tendermint/0_30_2"
 	tendermint_0_32_1 "github.com/ndidplatform/migration-tools/tendermint/0_32_1"
+	tendermint_0_33_2 "github.com/ndidplatform/migration-tools/tendermint/0_33_2"
 )
 
 func loadTendermintInfo(tendermintVersion string) (err error) {
@@ -45,6 +46,8 @@ func loadTendermintInfo(tendermintVersion string) (err error) {
 		_, err = tendermint_0_30_2.GetTendermintInfo(tmHome)
 	case "0.32.1":
 		_, err = tendermint_0_32_1.GetTendermintInfo(tmHome)
+	case "0.33.2":
+		_, err = tendermint_0_33_2.GetTendermintInfo(tmHome)
 	default:
 		return errors.New("unsupported Tendermint version")
 	}
@@ -57,7 +60,7 @@ var loadTendermintInfoCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(1),
 	PreRun: func(cmd *cobra.Command, args []string) {
 		curDir, _ := os.Getwd()
-		viper.SetDefault("TM_HOME", path.Join(curDir, "../../smart-contract/config/tendermint/IdP"))
+		viper.SetDefault("TM_HOME", path.Join(curDir, "../smart-contract/config/tendermint/IdP"))
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return loadTendermintInfo(args[0])

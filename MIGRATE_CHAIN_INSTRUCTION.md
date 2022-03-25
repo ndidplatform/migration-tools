@@ -56,7 +56,7 @@
 
    TM_HOME=/home/support/ndid/ndid/tendermint/ \
    ABCI_DB_DIR_PATH=/home/support/ndid/ndid/data/ndid/abci/ \
-   go run main.go convert-and-backup 4 5
+   go run main.go convert-and-backup 6 7
    ```
 
    or run with C lib support for LevelDB (in case DB to backup uses cleveldb):
@@ -64,7 +64,7 @@
    ```sh
    TM_HOME=/home/support/ndid/ndid/tendermint/ \
    ABCI_DB_DIR_PATH=/home/support/ndid/ndid/data/ndid/abci/ \
-   CGO_ENABLED=1 CGO_LDFLAGS="-lsnappy" go run -tags "cleveldb" main.go convert-and-backup 4 5
+   CGO_ENABLED=1 CGO_LDFLAGS="-lsnappy" go run -tags "cleveldb" main.go convert-and-backup 6 7
    ```
 
    - `TM_HOME` คือ Home directory ของ Tendermint
@@ -121,7 +121,7 @@
    TENDERMINT_RPC_HOST=localhost \
    TENDERMINT_RPC_PORT=26000 \
    BACKUP_DATA_DIR=<PATH_TO_BACKUP_DIRECTORY> \
-   go run main.go restore 5
+   go run main.go restore 7
    ```
 
    - `NDID_NODE_ID` คือ ชื่อ node_id ของ NDID ที่จะใช้ initialize/register

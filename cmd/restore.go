@@ -33,6 +33,8 @@ import (
 	v3 "github.com/ndidplatform/migration-tools/did/v3"
 	v4 "github.com/ndidplatform/migration-tools/did/v4"
 	v5 "github.com/ndidplatform/migration-tools/did/v5"
+	v6 "github.com/ndidplatform/migration-tools/did/v6"
+	v7 "github.com/ndidplatform/migration-tools/did/v7"
 )
 
 func restore(toVersion string) (err error) {
@@ -68,6 +70,26 @@ func restore(toVersion string) (err error) {
 		)
 	case "5":
 		err = v5.Restore(
+			ndidID,
+			backupDataDir,
+			backupDataFileName,
+			chainHistoryFileName,
+			keyDir,
+			tendermintRPCHost,
+			tendermintRPCPort,
+		)
+	case "6":
+		err = v6.Restore(
+			ndidID,
+			backupDataDir,
+			backupDataFileName,
+			chainHistoryFileName,
+			keyDir,
+			tendermintRPCHost,
+			tendermintRPCPort,
+		)
+	case "7":
+		err = v7.Restore(
 			ndidID,
 			backupDataDir,
 			backupDataFileName,

@@ -33,7 +33,10 @@ func GetTendermintInfo(tmHome string) (tendermintStateInfo *TendermintStateInfo,
 	}
 	dbDir := path.Join(tmHome, config.DBPath)
 	dbType := dbm.BackendType(config.DBBackend)
-	stateDB := dbm.NewDB("state", dbType, dbDir)
+	stateDB, err := dbm.NewDB("state", dbType, dbDir)
+	if err != nil {
+		return nil, err
+	}
 	state, err := state.LoadState(stateDB)
 	if err != nil {
 		return nil, err
@@ -41,7 +44,10 @@ func GetTendermintInfo(tmHome string) (tendermintStateInfo *TendermintStateInfo,
 
 	// fmt.Printf("state: %+v\n", state)
 
-	blockDB := dbm.NewDB("blockstore", dbType, dbDir)
+	blockDB, err := dbm.NewDB("blockstore", dbType, dbDir)
+	if err != nil {
+		return nil, err
+	}
 	blockMeta, err := block.LoadBlockMeta(blockDB, state.LastBlockHeight)
 	if err != nil {
 		return nil, err

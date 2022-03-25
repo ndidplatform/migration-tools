@@ -71,6 +71,9 @@ type StateDB dbm.DB
 
 func GetStateDB(dbType string, dbDir string) StateDB {
 	dbName := "didDB"
-	db := dbm.NewDB(dbName, dbm.BackendType(dbType), dbDir)
+	db, err := dbm.NewDB(dbName, dbm.BackendType(dbType), dbDir)
+	if err != nil {
+		panic(err)
+	}
 	return db
 }

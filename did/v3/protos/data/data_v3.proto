@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = ".;ndid_abci_state_v3";
+option go_package = "./;ndid_abci_state_v3";
 
 package ndid_abci_state_v3;
 
