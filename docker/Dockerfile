@@ -1,4 +1,4 @@
-FROM golang:1.14-alpine3.11 as builder
+FROM golang:1.17-alpine3.15 as builder
 
 # Install tools and snappy lib
 RUN apk update && apk add --no-cache --virtual .build-deps \
@@ -23,7 +23,7 @@ RUN go build \
     -o ./build/migration-tools
 
 
-FROM alpine:3.11
+FROM alpine:3.15
 LABEL maintainer="NDID IT Team <it@ndid.co.th>"
 
 # Set umask to 027
