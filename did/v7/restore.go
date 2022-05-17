@@ -29,6 +29,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -43,6 +44,8 @@ import (
 	_log "github.com/ndidplatform/migration-tools/log"
 	"github.com/ndidplatform/migration-tools/utils"
 )
+
+var tendermintRPCAddress string
 
 func Restore(
 	ndidID string,
@@ -86,6 +89,8 @@ func Restore(
 		return err
 	}
 	defer tmClient.Close()
+
+	tendermintRPCAddress = fmt.Sprintf("http://%s:%s", tendermintRPCHost, tendermintRPCPort)
 
 	dataMaster, err := ioutil.ReadAll(ndidMasterKeyFile)
 	if err != nil {
@@ -267,27 +272,27 @@ func setInitData(
 		return err
 	}
 
-	var tx protoTm.Tx
-	tx.Method = string(fnName)
-	tx.Params = string(paramJSON)
-	tx.Nonce = []byte(nonce)
-	tx.Signature = signature
-	tx.NodeId = ndidID
+	// var tx protoTm.Tx
+	// tx.Method = string(fnName)
+	// tx.Params = string(paramJSON)
+	// tx.Nonce = []byte(nonce)
+	// tx.Signature = signature
+	// tx.NodeId = ndidID
 
-	txByte, err := proto.Marshal(&tx)
+	// txByte, err := proto.Marshal(&tx)
+	// if err != nil {
+	// 	return err
+	// }
+
+	result, err := CallTendermint(tendermintRPCAddress, []byte(fnName), paramJSON, []byte(nonce), signature, []byte(ndidID))
+	// result, err := tmClient.BroadcastTxCommit(txByte)
 	if err != nil {
 		return err
 	}
+	log.Printf("SetInitData CheckTx log: %s\n", result.Result.CheckTx.Log)
+	log.Printf("SetInitData DeliverTx log: %s\n", result.Result.DeliverTx.Log)
 
-	// result, err := CallTendermint(tendermintRPCAddress, []byte(fnName), paramJSON, []byte(nonce), signature, []byte(ndidID))
-	result, err := tmClient.BroadcastTxCommit(txByte)
-	if err != nil {
-		return err
-	}
-	log.Printf("SetInitData CheckTx log: %s\n", result.CheckTx.Log)
-	log.Printf("SetInitData DeliverTx log: %s\n", result.DeliverTx.Log)
-
-	if result.DeliverTx.Log != "success" {
+	if result.Result.DeliverTx.Log != "success" {
 		// pause 3 sec and retry again
 		log.Printf("Retry...\n")
 		time.Sleep(3 * time.Second)

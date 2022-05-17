@@ -35,6 +35,8 @@ import (
 	"github.com/ndidplatform/migration-tools/proto"
 )
 
+var httpClient *http.Client
+
 func CallTendermint(
 	tendermintAddr string,
 	fnName []byte,
@@ -75,13 +77,18 @@ func CallTendermint(
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+	if httpClient == nil {
+		httpClient = &http.Client{
+			Transport: &http.Transport{
+				MaxIdleConnsPerHost: 20,
+			},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
 	}
 
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
