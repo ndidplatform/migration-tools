@@ -109,7 +109,7 @@ func Restore(
 	}
 	defer file.Close()
 
-	estimatedTxSizeBytes := 300000
+	estimatedTxSizeBytes := 600000
 	size := 0
 	count := 0
 	nTx := 0
@@ -129,10 +129,16 @@ func Restore(
 		size += len(kv.Key) + len(kv.Value)
 		nTx++
 		if size > estimatedTxSizeBytes {
-			err = setInitData(tmClient, param, ndidPrivKey, ndidID)
-			if err != nil {
-				return err
-			}
+			go func(tmClient *tm_client.TmClient,
+				param SetInitDataParam,
+				ndidKey *rsa.PrivateKey,
+				ndidID string) {
+				err = setInitData(tmClient, param, ndidPrivKey, ndidID)
+				if err != nil {
+					panic(err)
+				}
+			}(tmClient, param, ndidPrivKey, ndidID)
+
 			log.Printf("Number of kv in param: %d\n", count)
 			log.Printf("Total number of kv: %d\n", nTx)
 			count = 0
@@ -141,10 +147,15 @@ func Restore(
 		}
 	}
 	if count > 0 {
-		err = setInitData(tmClient, param, ndidPrivKey, ndidID)
-		if err != nil {
-			return err
-		}
+		go func(tmClient *tm_client.TmClient,
+			param SetInitDataParam,
+			ndidKey *rsa.PrivateKey,
+			ndidID string) {
+			err = setInitData(tmClient, param, ndidPrivKey, ndidID)
+			if err != nil {
+				panic(err)
+			}
+		}(tmClient, param, ndidPrivKey, ndidID)
 		log.Printf("Number of kv in param: %d\n", count)
 		log.Printf("Total number of kv: %d\n", nTx)
 	}
