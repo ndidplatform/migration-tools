@@ -32,6 +32,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	protoTm "github.com/ndidplatform/migration-tools/did/v7/protos/tendermint"
@@ -109,10 +110,12 @@ func Restore(
 	}
 	defer file.Close()
 
-	estimatedTxSizeBytes := 600000
+	estimatedTxSizeBytes := 700000
 	size := 0
 	count := 0
 	nTx := 0
+
+	var wg sync.WaitGroup
 
 	var param SetInitDataParam
 	param.KVList = make([]KeyValue, 0)
@@ -129,10 +132,12 @@ func Restore(
 		size += len(kv.Key) + len(kv.Value)
 		nTx++
 		if size > estimatedTxSizeBytes {
+			wg.Add(1)
 			go func(tmClient *tm_client.TmClient,
 				param SetInitDataParam,
 				ndidKey *rsa.PrivateKey,
 				ndidID string) {
+				defer wg.Done()
 				err = setInitData(tmClient, param, ndidPrivKey, ndidID)
 				if err != nil {
 					panic(err)
@@ -147,10 +152,12 @@ func Restore(
 		}
 	}
 	if count > 0 {
+		wg.Add(1)
 		go func(tmClient *tm_client.TmClient,
 			param SetInitDataParam,
 			ndidKey *rsa.PrivateKey,
 			ndidID string) {
+			defer wg.Done()
 			err = setInitData(tmClient, param, ndidPrivKey, ndidID)
 			if err != nil {
 				panic(err)
@@ -159,6 +166,9 @@ func Restore(
 		log.Printf("Number of kv in param: %d\n", count)
 		log.Printf("Total number of kv: %d\n", nTx)
 	}
+
+	wg.Wait()
+
 	err = endInit(tmClient, ndidPrivKey, ndidID)
 	if err != nil {
 		return err
