@@ -110,7 +110,7 @@ func Restore(
 	}
 	defer file.Close()
 
-	estimatedTxSizeBytes := 600000
+	estimatedTxSizeBytes := 400000
 	size := 0
 	count := 0
 	nTx := 0
