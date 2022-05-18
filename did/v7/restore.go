@@ -93,6 +93,7 @@ func Restore(
 	tmClient.SubscribeToNewBlockEvents(txResultChan)
 
 	var deliverTxLogChanMap map[string]chan string = make(map[string]chan string)
+	var deliverTxLogChanMutex sync.RWMutex
 
 	go func() {
 		for {
@@ -100,7 +101,9 @@ func Restore(
 			if !ok {
 				return
 			}
+			deliverTxLogChanMutex.RLock()
 			deliverTxChan, ok := deliverTxLogChanMap[txResult.TxHashHex]
+			deliverTxLogChanMutex.RUnlock()
 			if ok {
 				deliverTxChan <- txResult.DeliverTxResult.Log
 			}
@@ -135,7 +138,7 @@ func Restore(
 	count := 0
 	nTx := 0
 
-	maxWorkerCount := 1000
+	maxWorkerCount := 5
 	sem := make(chan struct{}, maxWorkerCount)
 
 	var wg sync.WaitGroup
@@ -151,9 +154,13 @@ func Restore(
 		if err != nil {
 			panic(err)
 		}
-		deliverTxLogChanMap[txHashHex] = make(chan string)
+		deliverTxLogChan := make(chan string)
 
-		deliverTxLog := <-deliverTxLogChanMap[txHashHex]
+		deliverTxLogChanMutex.Lock()
+		deliverTxLogChanMap[txHashHex] = deliverTxLogChan
+		deliverTxLogChanMutex.Unlock()
+
+		deliverTxLog := <-deliverTxLogChan
 		log.Printf("SetInitData (kv count: %d) DeliverTx log: %s\n", nTx, deliverTxLog)
 
 		if deliverTxLog != "success" {
