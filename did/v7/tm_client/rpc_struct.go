@@ -73,7 +73,7 @@ type ResponseBlock struct {
 		BlockID struct {
 			Hash  string `json:"hash"`
 			Parts struct {
-				Total string `json:"total"`
+				Total int    `json:"total"`
 				Hash  string `json:"hash"`
 			} `json:"parts"`
 		} `json:"block_id"`
@@ -90,7 +90,7 @@ type ResponseBlock struct {
 			LastBlockID struct {
 				Hash  string `json:"hash"`
 				Parts struct {
-					Total string `json:"total"`
+					Total int    `json:"total"`
 					Hash  string `json:"hash"`
 				} `json:"parts"`
 			} `json:"last_block_id"`
@@ -119,7 +119,7 @@ type ResponseBlock struct {
 			LastBlockID struct {
 				Hash  string `json:"hash"`
 				Parts struct {
-					Total string `json:"total"`
+					Total int    `json:"total"`
 					Hash  string `json:"hash"`
 				} `json:"parts"`
 			} `json:"last_block_id"`
@@ -143,7 +143,7 @@ type ResponseBlock struct {
 			BlockID struct {
 				Hash  string `json:"hash"`
 				Parts struct {
-					Total string `json:"total"`
+					Total int    `json:"total"`
 					Hash  string `json:"hash"`
 				} `json:"parts"`
 			} `json:"block_id"`
@@ -154,7 +154,7 @@ type ResponseBlock struct {
 				BlockID struct {
 					Hash  string `json:"hash"`
 					Parts struct {
-						Total string `json:"total"`
+						Total int    `json:"total"`
 						Hash  string `json:"hash"`
 					} `json:"parts"`
 				} `json:"block_id"`
@@ -283,7 +283,7 @@ type BlockHeader struct {
 	LastBlockID struct {
 		Hash  string `json:"hash"`
 		Parts struct {
-			Total string `json:"total"`
+			Total int    `json:"total"`
 			Hash  string `json:"hash"`
 		} `json:"parts"`
 	} `json:"last_block_id"`
@@ -333,7 +333,7 @@ type EventDataNewBlock struct {
 					BlockID struct {
 						Hash  string `json:"hash"`
 						Parts struct {
-							Total string `json:"total"`
+							Total int    `json:"total"`
 							Hash  string `json:"hash"`
 						} `json:"parts"`
 					} `json:"block_id"`
@@ -344,7 +344,7 @@ type EventDataNewBlock struct {
 						BlockID struct {
 							Hash  string `json:"hash"`
 							Parts struct {
-								Total string `json:"total"`
+								Total int    `json:"total"`
 								Hash  string `json:"hash"`
 							} `json:"parts"`
 						} `json:"block_id"`

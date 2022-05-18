@@ -27,12 +27,15 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
-	"time"
+	"sync"
 
 	protoTm "github.com/ndidplatform/migration-tools/did/v7/protos/tendermint"
 	"github.com/ndidplatform/migration-tools/did/v7/tm_client"
@@ -86,6 +89,24 @@ func Restore(
 	}
 	defer tmClient.Close()
 
+	txResultChan := make(chan tm_client.TxResult)
+	tmClient.SubscribeToNewBlockEvents(txResultChan)
+
+	var deliverTxLogChanMap map[string]chan string = make(map[string]chan string)
+
+	go func() {
+		for {
+			txResult, ok := <-txResultChan
+			if !ok {
+				return
+			}
+			deliverTxChan, ok := deliverTxLogChanMap[txResult.TxHashHex]
+			if ok {
+				deliverTxChan <- txResult.DeliverTxResult.Log
+			}
+		}
+	}()
+
 	dataMaster, err := ioutil.ReadAll(ndidMasterKeyFile)
 	if err != nil {
 		return err
@@ -114,6 +135,8 @@ func Restore(
 	count := 0
 	nTx := 0
 
+	var wg sync.WaitGroup
+
 	var param SetInitDataParam
 	param.KVList = make([]KeyValue, 0)
 	scanner := bufio.NewScanner(file)
@@ -129,10 +152,29 @@ func Restore(
 		size += len(kv.Key) + len(kv.Value)
 		nTx++
 		if size > estimatedTxSizeBytes {
-			err = setInitData(tmClient, param, ndidPrivKey, ndidID)
-			if err != nil {
-				return err
-			}
+			wg.Add(1)
+			go func(
+				param SetInitDataParam,
+				ndidKey *rsa.PrivateKey,
+				ndidID string,
+				nTx int,
+			) {
+				defer wg.Done()
+				txHashHex, err := setInitData(tmClient, param, ndidPrivKey, ndidID)
+				if err != nil {
+					panic(err)
+				}
+				deliverTxLogChanMap[txHashHex] = make(chan string)
+
+				deliverTxLog := <-deliverTxLogChanMap[txHashHex]
+				log.Printf("SetInitData (kv count: %d) DeliverTx log: %s\n", nTx, deliverTxLog)
+
+				if deliverTxLog != "success" {
+					log.Fatalf("SetInitData (kv count: %d) DeliverTx failed: %s\n", nTx, deliverTxLog)
+					panic(fmt.Errorf("err"))
+				}
+			}(param, ndidPrivKey, ndidID, nTx)
+
 			log.Printf("Number of kv in param: %d\n", count)
 			log.Printf("Total number of kv: %d\n", nTx)
 			count = 0
@@ -141,13 +183,35 @@ func Restore(
 		}
 	}
 	if count > 0 {
-		err = setInitData(tmClient, param, ndidPrivKey, ndidID)
-		if err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func(
+			param SetInitDataParam,
+			ndidKey *rsa.PrivateKey,
+			ndidID string,
+			nTx int,
+		) {
+			defer wg.Done()
+			txHashHex, err := setInitData(tmClient, param, ndidPrivKey, ndidID)
+			if err != nil {
+				panic(err)
+			}
+			deliverTxLogChanMap[txHashHex] = make(chan string)
+
+			deliverTxLog := <-deliverTxLogChanMap[txHashHex]
+			log.Printf("SetInitData (kv count: %d) DeliverTx log: %s\n", nTx, deliverTxLog)
+
+			if deliverTxLog != "success" {
+				log.Fatalf("SetInitData (kv count: %d) DeliverTx failed: %s\n", nTx, deliverTxLog)
+				panic(fmt.Errorf("err"))
+			}
+		}(param, ndidPrivKey, ndidID, nTx)
+
 		log.Printf("Number of kv in param: %d\n", count)
 		log.Printf("Total number of kv: %d\n", nTx)
 	}
+
+	wg.Wait()
+
 	err = endInit(tmClient, ndidPrivKey, ndidID)
 	if err != nil {
 		return err
@@ -227,10 +291,10 @@ func setInitData(
 	param SetInitDataParam,
 	ndidKey *rsa.PrivateKey,
 	ndidID string,
-) (err error) {
+) (txHashHex string, err error) {
 	paramJSON, err := json.Marshal(param)
 	if err != nil {
-		return err
+		return "", err
 	}
 	fnName := "SetInitData"
 	nonce := base64.StdEncoding.EncodeToString([]byte(tmRand.Str(12)))
@@ -243,7 +307,7 @@ func setInitData(
 	hashed := pssh.Sum(nil)
 	signature, err := rsa.SignPKCS1v15(rand.Reader, ndidKey, newhash, hashed)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	var tx protoTm.Tx
@@ -255,28 +319,32 @@ func setInitData(
 
 	txByte, err := proto.Marshal(&tx)
 	if err != nil {
-		return err
+		return "", err
 	}
+
+	txHash := sha256.Sum256([]byte(txByte))
+	txHashHex = hex.EncodeToString(txHash[:])
 
 	// result, err := CallTendermint(tendermintRPCAddress, []byte(fnName), paramJSON, []byte(nonce), signature, []byte(ndidID))
-	result, err := tmClient.BroadcastTxCommit(txByte)
+	// result, err := tmClient.BroadcastTxCommit(txByte)
+	result, err := tmClient.BroadcastTxSync(txByte)
 	if err != nil {
-		return err
+		return "", err
 	}
-	log.Printf("SetInitData CheckTx log: %s\n", result.CheckTx.Log)
-	log.Printf("SetInitData DeliverTx log: %s\n", result.DeliverTx.Log)
+	log.Printf("SetInitData CheckTx log: %s\n", result.Log)
+	// log.Printf("SetInitData DeliverTx log: %s\n", result.DeliverTx.Log)
 
-	if result.DeliverTx.Log != "success" {
-		// pause 3 sec and retry again
-		log.Printf("Retry...\n")
-		time.Sleep(3 * time.Second)
-		err = setInitData(tmClient, param, ndidKey, ndidID)
-		if err != nil {
-			return err
-		}
-	}
+	// if result.DeliverTx.Log != "success" {
+	// 	// pause 3 sec and retry again
+	// 	log.Printf("Retry...\n")
+	// 	time.Sleep(3 * time.Second)
+	// 	txHashHex, err = setInitData(tmClient, param, ndidKey, ndidID)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// }
 
-	return nil
+	return txHashHex, nil
 }
 
 func endInit(
