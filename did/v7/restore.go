@@ -135,7 +135,33 @@ func Restore(
 	count := 0
 	nTx := 0
 
+	maxWorkerCount := 1000
+	sem := make(chan struct{}, maxWorkerCount)
+
 	var wg sync.WaitGroup
+
+	worker := func(
+		param SetInitDataParam,
+		ndidKey *rsa.PrivateKey,
+		ndidID string,
+		nTx int,
+	) {
+		defer wg.Done()
+		txHashHex, err := setInitData(tmClient, param, ndidPrivKey, ndidID)
+		if err != nil {
+			panic(err)
+		}
+		deliverTxLogChanMap[txHashHex] = make(chan string)
+
+		deliverTxLog := <-deliverTxLogChanMap[txHashHex]
+		log.Printf("SetInitData (kv count: %d) DeliverTx log: %s\n", nTx, deliverTxLog)
+
+		if deliverTxLog != "success" {
+			log.Fatalf("SetInitData (kv count: %d) DeliverTx failed: %s\n", nTx, deliverTxLog)
+			panic(fmt.Errorf("err"))
+		}
+		<-sem
+	}
 
 	var param SetInitDataParam
 	param.KVList = make([]KeyValue, 0)
@@ -152,28 +178,9 @@ func Restore(
 		size += len(kv.Key) + len(kv.Value)
 		nTx++
 		if size > estimatedTxSizeBytes {
+			sem <- struct{}{}
 			wg.Add(1)
-			go func(
-				param SetInitDataParam,
-				ndidKey *rsa.PrivateKey,
-				ndidID string,
-				nTx int,
-			) {
-				defer wg.Done()
-				txHashHex, err := setInitData(tmClient, param, ndidPrivKey, ndidID)
-				if err != nil {
-					panic(err)
-				}
-				deliverTxLogChanMap[txHashHex] = make(chan string)
-
-				deliverTxLog := <-deliverTxLogChanMap[txHashHex]
-				log.Printf("SetInitData (kv count: %d) DeliverTx log: %s\n", nTx, deliverTxLog)
-
-				if deliverTxLog != "success" {
-					log.Fatalf("SetInitData (kv count: %d) DeliverTx failed: %s\n", nTx, deliverTxLog)
-					panic(fmt.Errorf("err"))
-				}
-			}(param, ndidPrivKey, ndidID, nTx)
+			go worker(param, ndidPrivKey, ndidID, nTx)
 
 			log.Printf("Number of kv in param: %d\n", count)
 			log.Printf("Total number of kv: %d\n", nTx)
@@ -183,28 +190,9 @@ func Restore(
 		}
 	}
 	if count > 0 {
+		sem <- struct{}{}
 		wg.Add(1)
-		go func(
-			param SetInitDataParam,
-			ndidKey *rsa.PrivateKey,
-			ndidID string,
-			nTx int,
-		) {
-			defer wg.Done()
-			txHashHex, err := setInitData(tmClient, param, ndidPrivKey, ndidID)
-			if err != nil {
-				panic(err)
-			}
-			deliverTxLogChanMap[txHashHex] = make(chan string)
-
-			deliverTxLog := <-deliverTxLogChanMap[txHashHex]
-			log.Printf("SetInitData (kv count: %d) DeliverTx log: %s\n", nTx, deliverTxLog)
-
-			if deliverTxLog != "success" {
-				log.Fatalf("SetInitData (kv count: %d) DeliverTx failed: %s\n", nTx, deliverTxLog)
-				panic(fmt.Errorf("err"))
-			}
-		}(param, ndidPrivKey, ndidID, nTx)
+		go worker(param, ndidPrivKey, ndidID, nTx)
 
 		log.Printf("Number of kv in param: %d\n", count)
 		log.Printf("Total number of kv: %d\n", nTx)
