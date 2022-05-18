@@ -138,7 +138,7 @@ func Restore(
 	count := 0
 	nTx := 0
 
-	maxWorkerCount := 5
+	maxWorkerCount := 3000
 	sem := make(chan struct{}, maxWorkerCount)
 
 	var wg sync.WaitGroup
