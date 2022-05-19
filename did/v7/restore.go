@@ -226,6 +226,78 @@ func Restore(
 	return nil
 }
 
+func SetNodeKeys(
+	ndidID string,
+	nodeMasterPublicKeyFilepath string,
+	nodePublicKeyFilepath string,
+	keyDir string,
+	tendermintRPCHost string,
+	tendermintRPCPort string,
+) (err error) {
+	ndidMasterKeyFile, err := os.Open(keyDir + "ndid_master")
+	if err != nil {
+		return err
+	}
+	defer ndidMasterKeyFile.Close()
+	dataMaster, err := ioutil.ReadAll(ndidMasterKeyFile)
+	if err != nil {
+		return err
+	}
+
+	// new public keys
+	ndidPublicKeyFile, err := os.Open(nodePublicKeyFilepath)
+	if err != nil {
+		return err
+	}
+	defer ndidPublicKeyFile.Close()
+	ndidNodePublicKey, err := ioutil.ReadAll(ndidPublicKeyFile)
+	if err != nil {
+		return err
+	}
+	ndidMasterPublicKeyFile, err := os.Open(nodeMasterPublicKeyFilepath)
+	if err != nil {
+		return err
+	}
+	defer ndidMasterPublicKeyFile.Close()
+	ndidNodeMasterPublicKey, err := ioutil.ReadAll(ndidMasterPublicKeyFile)
+	if err != nil {
+		return err
+	}
+
+	logger, err := _log.NewLogger(&_log.Configuration{
+		EnableConsole:     true,
+		ConsoleLevel:      "info",
+		ConsoleJSONFormat: false,
+		Color:             true,
+	}, _log.InstanceGoLogger)
+	if err != nil {
+		return err
+	}
+	tmClient, err := tm_client.New(logger)
+	if err != nil {
+		return err
+	}
+	_, err = tmClient.Connect(tendermintRPCHost, tendermintRPCPort)
+	if err != nil {
+		return err
+	}
+	defer tmClient.Close()
+
+	ndidMasterPrivKey := utils.GetPrivateKeyFromString(string(dataMaster))
+	err = updateNode(
+		tmClient,
+		ndidMasterPrivKey,
+		string(ndidNodePublicKey),
+		string(ndidNodeMasterPublicKey),
+		ndidID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func initNDID(
 	tmClient *tm_client.TmClient,
 	ndidKey *rsa.PrivateKey,
@@ -399,6 +471,66 @@ func endInit(
 		return err
 	}
 	log.Println("EndInit DeliverTx log:", result.DeliverTx.Log)
+
+	return nil
+}
+
+func updateNode(
+	tmClient *tm_client.TmClient,
+	ndidKey *rsa.PrivateKey,
+	ndidPublicKeyPem string,
+	ndidMasterPublicKeyPem string,
+	ndidID string,
+) (err error) {
+	var updateNodeParam UpdateNodeParam
+	updateNodeParam.PublicKey = ndidPublicKeyPem
+	updateNodeParam.MasterPublicKey = ndidMasterPublicKeyPem
+	paramJSON, err := json.Marshal(updateNodeParam)
+	if err != nil {
+		return err
+	}
+	fnName := "UpdateNode"
+	nonce := base64.StdEncoding.EncodeToString([]byte(tmRand.Str(12)))
+	tempPSSmessage := append([]byte(fnName), paramJSON...)
+	tempPSSmessage = append(tempPSSmessage, []byte(nonce)...)
+	PSSmessage := []byte(base64.StdEncoding.EncodeToString(tempPSSmessage))
+	newhash := crypto.SHA256
+	pssh := newhash.New()
+	pssh.Write(PSSmessage)
+	hashed := pssh.Sum(nil)
+	signature, err := rsa.SignPKCS1v15(rand.Reader, ndidKey, newhash, hashed)
+	if err != nil {
+		return err
+	}
+
+	var tx protoTm.Tx
+	tx.Method = string(fnName)
+	tx.Params = string(paramJSON)
+	tx.Nonce = []byte(nonce)
+	tx.Signature = signature
+	tx.NodeId = ndidID
+
+	txByte, err := proto.Marshal(&tx)
+	if err != nil {
+		return err
+	}
+
+	// result, err := CallTendermint(tendermintRPCAddress, []byte(fnName), paramJSON, []byte(nonce), signature, []byte(initNDIDparam.NodeID))
+	result, err := tmClient.BroadcastTxCommit(txByte)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("UpdateNode CheckTx code: %d log: %s\n", result.CheckTx.Code, result.CheckTx.Log)
+	log.Printf("UpdateNode DeliverTx code: %d log: %s\n", result.DeliverTx.Code, result.DeliverTx.Log)
+
+	if result.CheckTx.Code != 0 {
+		return fmt.Errorf("UpdateNode CheckTx non-0 code: %d", result.CheckTx.Code)
+	}
+
+	if result.DeliverTx.Code != 0 {
+		return fmt.Errorf("UpdateNode DeliverTx non-0 code: %d", result.DeliverTx.Code)
+	}
 
 	return nil
 }

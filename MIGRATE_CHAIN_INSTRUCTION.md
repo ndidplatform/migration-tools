@@ -142,3 +142,16 @@
    ```
 
 10. (Optional) Set NDID node master public key and public key
+
+   Example:
+
+   ```sh
+   cd migration-tools
+
+   NDID_NODE_ID=<NDID_NODE_ID> \
+   TENDERMINT_RPC_HOST=localhost \
+   TENDERMINT_RPC_PORT=26000 \
+   NODE_NEW_MASTER_PUBLIC_KEY_FILEPATH=<PATH_TO_NODE_NEW_MASTER_PUBLIC_KEY_FILE> \
+   NODE_NEW_PUBLIC_KEY_FILEPATH=<PATH_TO_NODE_NEW_PUBLIC_KEY_FILE> \
+   go run main.go update-node 7
+   ```

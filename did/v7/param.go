@@ -39,3 +39,9 @@ type InitNDIDParam struct {
 }
 
 type EndInitParam struct{}
+
+type UpdateNodeParam struct {
+	PublicKey                              string   `json:"public_key"`
+	MasterPublicKey                        string   `json:"master_public_key"`
+	SupportedRequestMessageDataUrlTypeList []string `json:"supported_request_message_data_url_type_list"`
+}
