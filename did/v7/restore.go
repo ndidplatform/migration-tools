@@ -32,6 +32,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -172,11 +173,21 @@ func Restore(
 
 	var param SetInitDataParam
 	param.KVList = make([]KeyValue, 0)
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		jsonStr := scanner.Text()
+	reader := bufio.NewReader(file)
+	for {
+		line, err := reader.ReadString('\n')
+
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				log.Fatalf("read err: %+v\n", err)
+				return err
+			}
+		}
+
 		var kv KeyValue
-		err := json.Unmarshal([]byte(jsonStr), &kv)
+		err = json.Unmarshal([]byte(line), &kv)
 		if err != nil {
 			panic(err)
 		}
@@ -195,11 +206,6 @@ func Restore(
 			size = 0
 			param.KVList = make([]KeyValue, 0)
 		}
-	}
-	err = scanner.Err()
-	if err != nil {
-		log.Fatalf("scan err: %+v\n", err)
-		return err
 	}
 	if count > 0 {
 		sem <- struct{}{}
