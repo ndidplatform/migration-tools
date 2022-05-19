@@ -30,11 +30,9 @@
    Example:
 
    ```sh
-   curl -skX POST https://IP:PORT/ndid/set_last_block \
+   curl -vkX POST https://IP:PORT/ndid/set_last_block \
       -H "Content-Type: application/json" \
-      -d "{\"block_height\":0}" \
-      -w '%{http_code}' \
-      -o /dev/null
+      -d "{\"block_height\":0}"
    ```
 
 - `block_height` คือเลข Block สุดท้ายที่จะให้สามารถทำ Transaction ลง Blockchain ได้ **(block_height = 0 คือ setLastBlock เท่ากับ Block ปัจจุบัน และ -1 คือ ยกเลิกการ SetLastBlock)**
@@ -42,6 +40,13 @@
 ## Backup data
 
 1. Save/Write down NDID node ID(s), master public key, and public key. These values can be queried using GET `/utility/nodes/<NDID_NODE_ID>`
+
+   Example:
+
+   ```sh
+   curl -vkX GET https://localhost:8443/utility/nodes/ndid1 \
+      -H "Content-Type: application/json"
+   ```
 
 2. Stop Tendermint and ABCI (`did-tendermint`)
 
