@@ -196,6 +196,11 @@ func Restore(
 			param.KVList = make([]KeyValue, 0)
 		}
 	}
+	err = scanner.Err()
+	if err != nil {
+		log.Fatalf("scan err: %+v\n", err)
+		return err
+	}
 	if count > 0 {
 		sem <- struct{}{}
 		wg.Add(1)
@@ -326,8 +331,12 @@ func setInitData(
 	if err != nil {
 		return "", err
 	}
-	log.Printf("SetInitData CheckTx log: %s\n", result.Log)
+	log.Printf("SetInitData CheckTx code: %d log: %s\n", result.Code, result.Log)
 	// log.Printf("SetInitData DeliverTx log: %s\n", result.DeliverTx.Log)
+
+	if result.Code != 0 {
+		return "", fmt.Errorf("SetInitData CheckTx non-0 code: %d", result.Code)
+	}
 
 	// if result.DeliverTx.Log != "success" {
 	// 	// pause 3 sec and retry again
