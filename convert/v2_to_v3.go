@@ -131,10 +131,12 @@ func ConvertStateDBDataV2ToV3(
 		// Do not save
 	case strings.Contains(string(key), "val:"):
 		// Validator
-		err := saveKeyValue(key, value)
-		if err != nil {
-			return err
-		}
+		// Do not save
+
+		// err := saveKeyValue(key, value)
+		// if err != nil {
+		// 	return err
+		// }
 	case strings.Contains(string(key), "ChainHistoryInfo"):
 		var chainHistory v2.ChainHistory
 		if string(value) != "" {
