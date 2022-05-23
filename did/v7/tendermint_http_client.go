@@ -45,7 +45,7 @@ func CallTendermint(
 ) (*ResponseTx, error) {
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
-	tx.Params = string(param)
+	tx.Params = param
 	tx.Nonce = nonce
 	tx.Signature = signature
 	tx.NodeId = string(nodeID)

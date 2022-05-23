@@ -38,6 +38,7 @@ import (
 	"os"
 	"sync"
 
+	protoParam "github.com/ndidplatform/migration-tools/did/v7/protos/param"
 	protoTm "github.com/ndidplatform/migration-tools/did/v7/protos/tendermint"
 	"github.com/ndidplatform/migration-tools/did/v7/tm_client"
 	"github.com/ndidplatform/migration-tools/proto"
@@ -151,7 +152,7 @@ func Restore(
 		nTx int,
 	) {
 		defer wg.Done()
-		txHashHex, err := setInitData(tmClient, param, ndidPrivKey, ndidID)
+		txHashHex, err := setInitData_pb(tmClient, param, ndidPrivKey, ndidID)
 		if err != nil {
 			panic(err)
 		}
@@ -343,7 +344,7 @@ func initNDID(
 
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
-	tx.Params = string(paramJSON)
+	tx.Params = paramJSON
 	tx.Nonce = []byte(nonce)
 	tx.Signature = signature
 	tx.NodeId = string(initNDIDparam.NodeID)
@@ -390,7 +391,7 @@ func setInitData(
 
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
-	tx.Params = string(paramJSON)
+	tx.Params = paramJSON
 	tx.Nonce = []byte(nonce)
 	tx.Signature = signature
 	tx.NodeId = ndidID
@@ -414,6 +415,81 @@ func setInitData(
 
 	if result.Code != 0 {
 		return "", fmt.Errorf("SetInitData CheckTx non-0 code: %d", result.Code)
+	}
+
+	// if result.DeliverTx.Log != "success" {
+	// 	// pause 3 sec and retry again
+	// 	log.Printf("Retry...\n")
+	// 	time.Sleep(3 * time.Second)
+	// 	txHashHex, err = setInitData(tmClient, param, ndidKey, ndidID)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// }
+
+	return txHashHex, nil
+}
+
+func setInitData_pb(
+	tmClient *tm_client.TmClient,
+	param SetInitDataParam,
+	ndidKey *rsa.PrivateKey,
+	ndidID string,
+) (txHashHex string, err error) {
+	var paramPb protoParam.SetInitDataParam
+	paramPb.KvList = make([]*protoParam.KeyValue, 0)
+	for _, kv := range param.KVList {
+		paramPb.KvList = append(paramPb.KvList, &protoParam.KeyValue{
+			Key:   kv.Key,
+			Value: kv.Value,
+		})
+	}
+
+	paramPbByte, err := proto.Marshal(&paramPb)
+	if err != nil {
+		return "", err
+	}
+
+	fnName := "SetInitData_pb"
+	nonce := base64.StdEncoding.EncodeToString([]byte(tmRand.Str(12)))
+	tempPSSmessage := append([]byte(fnName), paramPbByte...)
+	tempPSSmessage = append(tempPSSmessage, []byte(nonce)...)
+	PSSmessage := []byte(base64.StdEncoding.EncodeToString(tempPSSmessage))
+	newhash := crypto.SHA256
+	pssh := newhash.New()
+	pssh.Write(PSSmessage)
+	hashed := pssh.Sum(nil)
+	signature, err := rsa.SignPKCS1v15(rand.Reader, ndidKey, newhash, hashed)
+	if err != nil {
+		return "", err
+	}
+
+	var tx protoTm.Tx
+	tx.Method = string(fnName)
+	tx.Params = paramPbByte
+	tx.Nonce = []byte(nonce)
+	tx.Signature = signature
+	tx.NodeId = ndidID
+
+	txByte, err := proto.Marshal(&tx)
+	if err != nil {
+		return "", err
+	}
+
+	txHash := sha256.Sum256([]byte(txByte))
+	txHashHex = hex.EncodeToString(txHash[:])
+
+	// result, err := CallTendermint(tendermintRPCAddress, []byte(fnName), paramJSON, []byte(nonce), signature, []byte(ndidID))
+	// result, err := tmClient.BroadcastTxCommit(txByte)
+	result, err := tmClient.BroadcastTxSync(txByte)
+	if err != nil {
+		return "", err
+	}
+	log.Printf("SetInitData_pb CheckTx code: %d log: %s\n", result.Code, result.Log)
+	// log.Printf("SetInitData DeliverTx log: %s\n", result.DeliverTx.Log)
+
+	if result.Code != 0 {
+		return "", fmt.Errorf("SetInitData_pb CheckTx non-0 code: %d", result.Code)
 	}
 
 	// if result.DeliverTx.Log != "success" {
@@ -455,7 +531,7 @@ func endInit(
 
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
-	tx.Params = string(paramJSON)
+	tx.Params = paramJSON
 	tx.Nonce = []byte(nonce)
 	tx.Signature = signature
 	tx.NodeId = ndidID
@@ -505,7 +581,7 @@ func updateNode(
 
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
-	tx.Params = string(paramJSON)
+	tx.Params = paramJSON
 	tx.Nonce = []byte(nonce)
 	tx.Signature = signature
 	tx.NodeId = ndidID
