@@ -153,28 +153,28 @@ func ConvertStateDBDataV6ToV7(
 		key = bytes.TrimPrefix(key, v6.KvPairPrefixKey)
 	}
 	switch {
-	case strings.Contains(string(key), "lastBlock"):
+	case strings.HasPrefix(string(key), "lastBlock"):
 		// Last block
 		// Do not save
-	case ndidNodeID != "" && strings.Contains(string(key), string(ndidNodeID)) && !strings.Contains(string(key), "MasterNDID"):
+	case ndidNodeID != "" && !strings.HasPrefix(string(key), "MasterNDID") && strings.Contains(string(key), string(ndidNodeID)):
 		// NDID node detail
 		// Do not save
-	case strings.Contains(string(key), "MasterNDID"):
+	case strings.HasPrefix(string(key), "MasterNDID"):
 		// NDID
 		// Do not save
-	case strings.Contains(string(key), "InitState"):
+	case strings.HasPrefix(string(key), "InitState"):
 		// Init state
 		// Do not save
-	case strings.Contains(string(key), "IdentityProof"):
+	case strings.HasPrefix(string(key), "IdentityProof"):
 		// Identity proof
 		// Do not save
-	case strings.Contains(string(key), "Accessor"):
+	case strings.HasPrefix(string(key), "Accessor"):
 		// All key that have associate with Accessor
 		// Do not save
-	case strings.Contains(string(key), "Request") && !strings.Contains(string(key), "versions"):
+	case strings.HasPrefix(string(key), "Request") && !strings.HasSuffix(string(key), "versions"):
 		// Request detail
 		// Do not save
-	case strings.Contains(string(key), "val:"):
+	case strings.HasPrefix(string(key), "val:"):
 		// Validator
 		// Do not save
 
@@ -182,7 +182,7 @@ func ConvertStateDBDataV6ToV7(
 		// if err != nil {
 		// 	return err
 		// }
-	case strings.Contains(string(key), "ChainHistoryInfo"):
+	case strings.HasPrefix(string(key), "ChainHistoryInfo"):
 		var chainHistory v6.ChainHistory
 		if string(value) != "" {
 			err := json.Unmarshal([]byte(value), &chainHistory)
@@ -204,7 +204,7 @@ func ConvertStateDBDataV6ToV7(
 		if err != nil {
 			return "", err
 		}
-	case strings.Contains(string(key), "Request") && strings.Contains(string(key), "versions"):
+	case strings.HasPrefix(string(key), "Request") && strings.HasSuffix(string(key), "versions"):
 		keyType = "Request"
 		// Versions of request
 		var keyVersionsV6 didProtoV6.KeyVersions
@@ -316,15 +316,15 @@ func ConvertStateDBDataV6ToV7(
 		// Do not save
 	default:
 		switch {
-		case strings.Contains(string(key), "NodeID"):
+		case strings.HasPrefix(string(key), "NodeID"):
 			keyType = "NodeID"
-		case strings.Contains(string(key), "RefGroupCode"):
+		case strings.HasPrefix(string(key), "RefGroupCode"):
 			keyType = "RefGroupCode"
-		case strings.Contains(string(key), "SignData"):
+		case strings.HasPrefix(string(key), "SignData"):
 			keyType = "SignData"
-		case strings.Contains(string(key), "accessorToRefCodeKey"):
+		case strings.HasPrefix(string(key), "accessorToRefCodeKey"):
 			keyType = "accessorToRefCodeKey"
-		case strings.Contains(string(key), "identityToRefCodeKey"):
+		case strings.HasPrefix(string(key), "identityToRefCodeKey"):
 			keyType = "identityToRefCodeKey"
 		}
 
