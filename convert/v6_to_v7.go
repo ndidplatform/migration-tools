@@ -103,6 +103,8 @@ func ConvertInputStateDBDataV6ToV7AndBackup(
 		return v6StateDB.Get(key)
 	}
 
+	var keyPrefixStats map[string]int64 = make(map[string]int64)
+
 	var keysRead int64 = 0
 
 	itr, err := v6StateDB.Iterator(nil, nil)
@@ -113,7 +115,7 @@ func ConvertInputStateDBDataV6ToV7AndBackup(
 		key := itr.Key()
 		value := itr.Value()
 
-		err := ConvertStateDBDataV6ToV7(
+		keyPrefix, err := ConvertStateDBDataV6ToV7(
 			key,
 			value,
 			string(ndidNodeID),
@@ -126,9 +128,11 @@ func ConvertInputStateDBDataV6ToV7AndBackup(
 			return err
 		}
 		keysRead++
+		keyPrefixStats[keyPrefix]++
 	}
 
 	log.Println("total key read:", keysRead)
+	log.Println("key prefix stats:", keyPrefixStats)
 
 	return nil
 }
@@ -141,7 +145,7 @@ func ConvertStateDBDataV6ToV7(
 	dbGet func(key []byte) (value []byte, err error),
 	saveNewChainHistory func(chainHistory []byte) (err error),
 	saveKeyValue func(key []byte, value []byte) (err error),
-) (err error) {
+) (keyPrefix string, err error) {
 	// Delete prefix
 	if bytes.Contains(key, v6.KvPairPrefixKey) {
 		key = bytes.TrimPrefix(key, v6.KvPairPrefixKey)
@@ -196,7 +200,7 @@ func ConvertStateDBDataV6ToV7(
 		}
 		err = saveNewChainHistory(chainHistoryStr)
 		if err != nil {
-			return err
+			return "", err
 		}
 	case strings.Contains(string(key), "Request") && strings.Contains(string(key), "versions"):
 		// Versions of request
@@ -213,7 +217,7 @@ func ConvertStateDBDataV6ToV7(
 		requestV6Key := "Request" + "|" + requestID + "|" + latestVersion
 		requestV6Value, err := dbGet([]byte(requestV6Key))
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		var requestV6 didProtoV6.Request
@@ -298,11 +302,11 @@ func ConvertStateDBDataV6ToV7(
 		// Write request detail and Version of request detail
 		err = saveKeyValue([]byte(newReqDetailKey), requestV7Bytes)
 		if err != nil {
-			return err
+			return "", err
 		}
 		err = saveKeyValue(key, newReqVersionsValue)
 		if err != nil {
-			return err
+			return "", err
 		}
 	case len(value) == 0 && !isKnownKey(string(key)):
 		// nonce
@@ -310,11 +314,17 @@ func ConvertStateDBDataV6ToV7(
 	default:
 		err := saveKeyValue(key, value)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 
-	return nil
+	for _, knownKey := range knownKeys {
+		if strings.HasPrefix(string(key), knownKey) {
+			keyPrefix = knownKey
+		}
+	}
+
+	return keyPrefix, nil
 }
 
 func isKnownKey(key string) bool {

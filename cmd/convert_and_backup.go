@@ -347,7 +347,7 @@ func loopConvert(
 				key := iter.Key()
 				value := iter.Value()
 
-				err = convert.ConvertStateDBDataV6ToV7(
+				_, err = convert.ConvertStateDBDataV6ToV7(
 					key,
 					value,
 					"",
