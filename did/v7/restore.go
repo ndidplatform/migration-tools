@@ -48,6 +48,8 @@ import (
 	"github.com/ndidplatform/migration-tools/utils"
 )
 
+var currentChainID string
+
 func Restore(
 	ndidID string,
 	backupDataDir string,
@@ -90,6 +92,12 @@ func Restore(
 		return err
 	}
 	defer tmClient.Close()
+
+	tmStatus, err := tmClient.Status()
+	if err != nil {
+		return err
+	}
+	currentChainID = tmStatus.NodeInfo.Network
 
 	txResultChan := make(chan tm_client.TxResult)
 	tmClient.SubscribeToNewBlockEvents(txResultChan)
@@ -329,9 +337,10 @@ func initNDID(
 		return err
 	}
 	fnName := "InitNDID"
-	nonce := base64.StdEncoding.EncodeToString([]byte(tmRand.Str(12)))
+	nonce := tmRand.Bytes(32)
 	tempPSSmessage := append([]byte(fnName), paramJSON...)
-	tempPSSmessage = append(tempPSSmessage, []byte(nonce)...)
+	tempPSSmessage = append(tempPSSmessage, []byte(currentChainID)...)
+	tempPSSmessage = append(tempPSSmessage, nonce...)
 	PSSmessage := []byte(base64.StdEncoding.EncodeToString(tempPSSmessage))
 	newhash := crypto.SHA256
 	pssh := newhash.New()
@@ -345,7 +354,8 @@ func initNDID(
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
 	tx.Params = paramJSON
-	tx.Nonce = []byte(nonce)
+	tx.ChainId = currentChainID
+	tx.Nonce = nonce
 	tx.Signature = signature
 	tx.NodeId = string(initNDIDparam.NodeID)
 
@@ -376,24 +386,24 @@ func setInitData(
 		return "", err
 	}
 	fnName := "SetInitData"
-	nonce := base64.StdEncoding.EncodeToString([]byte(tmRand.Str(12)))
-	tempPSSmessage := append([]byte(fnName), paramJSON...)
-	tempPSSmessage = append(tempPSSmessage, []byte(nonce)...)
-	PSSmessage := []byte(base64.StdEncoding.EncodeToString(tempPSSmessage))
-	newhash := crypto.SHA256
-	pssh := newhash.New()
-	pssh.Write(PSSmessage)
-	hashed := pssh.Sum(nil)
-	signature, err := rsa.SignPKCS1v15(rand.Reader, ndidKey, newhash, hashed)
-	if err != nil {
-		return "", err
-	}
+	// nonce := base64.StdEncoding.EncodeToString([]byte(tmRand.Str(12)))
+	// tempPSSmessage := append([]byte(fnName), paramJSON...)
+	// tempPSSmessage = append(tempPSSmessage, []byte(nonce)...)
+	// PSSmessage := []byte(base64.StdEncoding.EncodeToString(tempPSSmessage))
+	// newhash := crypto.SHA256
+	// pssh := newhash.New()
+	// pssh.Write(PSSmessage)
+	// hashed := pssh.Sum(nil)
+	// signature, err := rsa.SignPKCS1v15(rand.Reader, ndidKey, newhash, hashed)
+	// if err != nil {
+	// 	return "", err
+	// }
 
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
 	tx.Params = paramJSON
-	tx.Nonce = []byte(nonce)
-	tx.Signature = signature
+	// tx.Nonce = []byte(nonce)
+	// tx.Signature = signature
 	tx.NodeId = ndidID
 
 	txByte, err := proto.Marshal(&tx)
@@ -451,24 +461,24 @@ func setInitData_pb(
 	}
 
 	fnName := "SetInitData_pb"
-	nonce := base64.StdEncoding.EncodeToString([]byte(tmRand.Str(12)))
-	tempPSSmessage := append([]byte(fnName), paramPbByte...)
-	tempPSSmessage = append(tempPSSmessage, []byte(nonce)...)
-	PSSmessage := []byte(base64.StdEncoding.EncodeToString(tempPSSmessage))
-	newhash := crypto.SHA256
-	pssh := newhash.New()
-	pssh.Write(PSSmessage)
-	hashed := pssh.Sum(nil)
-	signature, err := rsa.SignPKCS1v15(rand.Reader, ndidKey, newhash, hashed)
-	if err != nil {
-		return "", err
-	}
+	// nonce := base64.StdEncoding.EncodeToString([]byte(tmRand.Str(12)))
+	// tempPSSmessage := append([]byte(fnName), paramPbByte...)
+	// tempPSSmessage = append(tempPSSmessage, []byte(nonce)...)
+	// PSSmessage := []byte(base64.StdEncoding.EncodeToString(tempPSSmessage))
+	// newhash := crypto.SHA256
+	// pssh := newhash.New()
+	// pssh.Write(PSSmessage)
+	// hashed := pssh.Sum(nil)
+	// signature, err := rsa.SignPKCS1v15(rand.Reader, ndidKey, newhash, hashed)
+	// if err != nil {
+	// 	return "", err
+	// }
 
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
 	tx.Params = paramPbByte
-	tx.Nonce = []byte(nonce)
-	tx.Signature = signature
+	// tx.Nonce = []byte(nonce)
+	// tx.Signature = signature
 	tx.NodeId = ndidID
 
 	txByte, err := proto.Marshal(&tx)
@@ -516,9 +526,10 @@ func endInit(
 		return err
 	}
 	fnName := "EndInit"
-	nonce := base64.StdEncoding.EncodeToString([]byte(tmRand.Str(12)))
+	nonce := tmRand.Bytes(32)
 	tempPSSmessage := append([]byte(fnName), paramJSON...)
-	tempPSSmessage = append(tempPSSmessage, []byte(nonce)...)
+	tempPSSmessage = append(tempPSSmessage, []byte(currentChainID)...)
+	tempPSSmessage = append(tempPSSmessage, nonce...)
 	PSSmessage := []byte(base64.StdEncoding.EncodeToString(tempPSSmessage))
 	newhash := crypto.SHA256
 	pssh := newhash.New()
@@ -532,7 +543,8 @@ func endInit(
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
 	tx.Params = paramJSON
-	tx.Nonce = []byte(nonce)
+	tx.ChainId = currentChainID
+	tx.Nonce = nonce
 	tx.Signature = signature
 	tx.NodeId = ndidID
 
@@ -566,9 +578,10 @@ func updateNode(
 		return err
 	}
 	fnName := "UpdateNode"
-	nonce := base64.StdEncoding.EncodeToString([]byte(tmRand.Str(12)))
+	nonce := tmRand.Bytes(32)
 	tempPSSmessage := append([]byte(fnName), paramJSON...)
-	tempPSSmessage = append(tempPSSmessage, []byte(nonce)...)
+	tempPSSmessage = append(tempPSSmessage, []byte(currentChainID)...)
+	tempPSSmessage = append(tempPSSmessage, nonce...)
 	PSSmessage := []byte(base64.StdEncoding.EncodeToString(tempPSSmessage))
 	newhash := crypto.SHA256
 	pssh := newhash.New()
@@ -582,6 +595,7 @@ func updateNode(
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
 	tx.Params = paramJSON
+	tx.ChainId = currentChainID
 	tx.Nonce = []byte(nonce)
 	tx.Signature = signature
 	tx.NodeId = ndidID

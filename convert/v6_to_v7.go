@@ -37,6 +37,48 @@ import (
 	"github.com/ndidplatform/migration-tools/proto"
 )
 
+var knownKeys []string = []string{
+	"MasterNDID",
+	"InitState",
+	"lastBlock",
+	"IdPList",
+	"AllNamespace",
+	"ServicePriceMinEffectiveDatetimeDelay",
+
+	"ChainHistoryInfo",
+	"TimeOutBlockRegisterIdentity",
+	"AllowedMinIalForRegisterIdentityAtFirstIdp",
+	"rpList",
+	"asList",
+	"allList",
+	"AllService",
+
+	"NodeID",
+	"BehindProxyNode",
+	"Token",
+	"TokenPriceFunc",
+	"Service",
+	"ServiceDestination",
+	"ApproveKey",
+	"ProvideService",
+	"RefGroupCode",
+	"identityToRefCodeKey",
+	"accessorToRefCodeKey",
+	"AllowedModeList",
+	"Request",
+	"Message",
+	"SignData",
+	"ErrorCode",
+	"ErrorCodeList",
+	"ServicePriceCeiling",
+	"ServicePriceMinEffectiveDatetimeDelay",
+	"ServicePriceListKey",
+	"RequestType",
+	"SuppressedIdentityModificationNotificationNode",
+
+	"val:",
+}
+
 func ConvertInputStateDBDataV6ToV7AndBackup(
 	saveNewChainHistory func(chainHistory []byte) (err error),
 	saveKeyValue func(key []byte, value []byte) (err error),
@@ -262,6 +304,9 @@ func ConvertStateDBDataV6ToV7(
 		if err != nil {
 			return err
 		}
+	case len(value) == 0 && !isKnownKey(string(key)):
+		// nonce
+		// Do not save
 	default:
 		err := saveKeyValue(key, value)
 		if err != nil {
@@ -270,4 +315,14 @@ func ConvertStateDBDataV6ToV7(
 	}
 
 	return nil
+}
+
+func isKnownKey(key string) bool {
+	for _, knownKey := range knownKeys {
+		if strings.HasPrefix(string(key), knownKey) {
+			return true
+		}
+	}
+
+	return false
 }
