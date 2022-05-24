@@ -46,8 +46,7 @@ const tmpDirectoryName = "ndid_migrate"
 var stateDBDataVersions []string = []string{"1", "2", "3", "4", "5", "6", "7"}
 
 var logKeysWritten = false
-
-const logKeysWrittenEvery = 100000
+var logKeysWrittenEvery int64 = 100000
 
 type BackupKeyValue struct {
 	Key   []byte `json:"key"`
@@ -86,6 +85,7 @@ func convertAndBackupStateDBData(fromVersion string, toVersion string) (err erro
 	}
 
 	logKeysWritten = viper.GetBool("LOG_KEYS_WRITTEN")
+	logKeysWrittenEvery = viper.GetInt64("LOG_KEYS_WRITTEN_EVERY")
 
 	backupDataDirectoryPath := viper.GetString("BACKUP_DATA_DIR")
 	backupDataDirectoryPath = path.Join(backupDataDirectoryPath, instanceDirName)
@@ -392,6 +392,7 @@ var convertAndBackupCmd = &cobra.Command{
 		viper.SetDefault("ABCI_DB_DIR_PATH", path.Join(curDir, "../smart-contract/DB1"))
 
 		viper.SetDefault("LOG_KEYS_WRITTEN", false)
+		viper.SetDefault("LOG_KEYS_WRITTEN_EVERY", 100000)
 		viper.SetDefault("BACKUP_DATA_DIR", "./_backup_data/")
 		viper.SetDefault("BACKUP_DATA_FILENAME", "data")
 		viper.SetDefault("BACKUP_VALIDATORS_FILENAME", "validators")
