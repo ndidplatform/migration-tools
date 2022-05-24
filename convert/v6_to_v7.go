@@ -103,7 +103,7 @@ func ConvertInputStateDBDataV6ToV7AndBackup(
 		return v6StateDB.Get(key)
 	}
 
-	var keyPrefixStats map[string]int64 = make(map[string]int64)
+	var keyTypeStats map[string]int64 = make(map[string]int64)
 
 	var keysRead int64 = 0
 
@@ -128,11 +128,13 @@ func ConvertInputStateDBDataV6ToV7AndBackup(
 			return err
 		}
 		keysRead++
-		keyPrefixStats[keyPrefix]++
+		if keyPrefix != "" {
+			keyTypeStats[keyPrefix]++
+		}
 	}
 
 	log.Println("total key read:", keysRead)
-	log.Println("key prefix stats:", keyPrefixStats)
+	log.Println("key type stats:", keyTypeStats)
 
 	return nil
 }
@@ -145,7 +147,7 @@ func ConvertStateDBDataV6ToV7(
 	dbGet func(key []byte) (value []byte, err error),
 	saveNewChainHistory func(chainHistory []byte) (err error),
 	saveKeyValue func(key []byte, value []byte) (err error),
-) (keyPrefix string, err error) {
+) (keyType string, err error) {
 	// Delete prefix
 	if bytes.Contains(key, v6.KvPairPrefixKey) {
 		key = bytes.TrimPrefix(key, v6.KvPairPrefixKey)
@@ -203,6 +205,7 @@ func ConvertStateDBDataV6ToV7(
 			return "", err
 		}
 	case strings.Contains(string(key), "Request") && strings.Contains(string(key), "versions"):
+		keyType = "Request"
 		// Versions of request
 		var keyVersionsV6 didProtoV6.KeyVersions
 		err := proto.Unmarshal([]byte(value), &keyVersionsV6)
@@ -312,19 +315,26 @@ func ConvertStateDBDataV6ToV7(
 		// nonce
 		// Do not save
 	default:
+		switch {
+		case strings.Contains(string(key), "NodeID"):
+			keyType = "NodeID"
+		case strings.Contains(string(key), "RefGroupCode"):
+			keyType = "RefGroupCode"
+		case strings.Contains(string(key), "SignData"):
+			keyType = "SignData"
+		case strings.Contains(string(key), "accessorToRefCodeKey"):
+			keyType = "accessorToRefCodeKey"
+		case strings.Contains(string(key), "identityToRefCodeKey"):
+			keyType = "identityToRefCodeKey"
+		}
+
 		err := saveKeyValue(key, value)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	for _, knownKey := range knownKeys {
-		if strings.HasPrefix(string(key), knownKey) {
-			keyPrefix = knownKey
-		}
-	}
-
-	return keyPrefix, nil
+	return keyType, nil
 }
 
 func isKnownKey(key string) bool {
