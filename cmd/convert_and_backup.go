@@ -25,6 +25,7 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -52,6 +53,10 @@ const logKeysWrittenEvery = 100000
 type BackupKeyValue struct {
 	Key   []byte `json:"key"`
 	Value []byte `json:"value"`
+}
+
+type Metadata struct {
+	TotalKeyCount int64 `json:"total_key_count"`
 }
 
 func convertAndBackupStateDBData(fromVersion string, toVersion string) (err error) {
@@ -95,6 +100,7 @@ func convertAndBackupStateDBData(fromVersion string, toVersion string) (err erro
 	// backupValidatorsFilename := viper.GetString("BACKUP_VALIDATORS_FILENAME")
 	backupChainHistoryFilename := viper.GetString("CHAIN_HISTORY_FILENAME")
 	// backupBlockNumberStr := viper.GetString("BLOCK_NUMBER")
+	backupMetadataFilename := viper.GetString("METADATA_FILENAME")
 
 	if fromVersion == toVersion {
 		// TODO: migrate from/to same version, no data structure conversion
@@ -110,6 +116,7 @@ func convertAndBackupStateDBData(fromVersion string, toVersion string) (err erro
 			backupDataDirectoryPath,
 			backupChainHistoryFilename,
 			backupDataFilename,
+			backupMetadataFilename,
 		)
 		if err != nil {
 			return err
@@ -136,6 +143,7 @@ func loopConvert(
 	backupDataDirectoryPath string,
 	backupChainHistoryFilename string,
 	backupDataFilename string,
+	backupMetadataFilename string,
 ) (err error) {
 	log.Println("converting version:", stateDBDataVersions[i], "to version:", stateDBDataVersions[i+1])
 
@@ -174,12 +182,19 @@ func loopConvert(
 			if err != nil {
 				return err
 			}
-			backupKeyCount++
+			// backupKeyCount++
 			if logKeysWritten && backupKeyCount%logKeysWrittenEvery == 0 {
 				log.Println("keys written:", backupKeyCount)
 			}
 			return nil
 		}
+
+		backupDataFile, err := utils.OpenFileForAppend(path.Join(backupDataDirectoryPath, backupDataFilename))
+		if err != nil {
+			return err
+		}
+		defer backupDataFile.Close()
+
 		saveKeyValue = func(key, value []byte) (err error) {
 			var kv BackupKeyValue
 			kv.Key = key
@@ -188,8 +203,8 @@ func loopConvert(
 			if err != nil {
 				return err
 			}
-			err = utils.AppendLineToFile(
-				path.Join(backupDataDirectoryPath, backupDataFilename),
+			err = utils.AppendLineToOpenedFile(
+				backupDataFile,
 				jsonStr,
 			)
 			if err != nil {
@@ -222,7 +237,7 @@ func loopConvert(
 			if err != nil {
 				return err
 			}
-			backupKeyCount++
+			// backupKeyCount++
 			if logKeysWritten && backupKeyCount%logKeysWrittenEvery == 0 {
 				log.Println("keys written:", backupKeyCount)
 			}
@@ -371,6 +386,18 @@ func loopConvert(
 		return err
 	}
 
+	// write metadata file
+	var metadata Metadata
+	metadata.TotalKeyCount = backupKeyCount
+	metadataJson, err := json.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(path.Join(backupDataDirectoryPath, backupMetadataFilename), metadataJson, 0644)
+	if err != nil {
+		return err
+	}
+
 	log.Println("total backup key count:", backupKeyCount)
 
 	return nil
@@ -396,6 +423,7 @@ var convertAndBackupCmd = &cobra.Command{
 		viper.SetDefault("BACKUP_DATA_FILENAME", "data")
 		viper.SetDefault("BACKUP_VALIDATORS_FILENAME", "validators")
 		viper.SetDefault("CHAIN_HISTORY_FILENAME", "chain_history")
+		viper.SetDefault("METADATA_FILENAME", "metadata")
 		viper.SetDefault("BLOCK_NUMBER", "")
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
