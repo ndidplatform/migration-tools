@@ -48,6 +48,26 @@ func AppendLineToFile(filepath string, data []byte) (err error) {
 	return nil
 }
 
+func OpenFileForAppend(filepath string) (f *os.File, err error) {
+	f, err = os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
+func AppendLineToOpenedFile(f *os.File, data []byte) (err error) {
+	_, err = f.Write(data)
+	if err != nil {
+		return err
+	}
+	_, err = f.WriteString("\n")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func CreateDirIfNotExist(path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, 0755)
