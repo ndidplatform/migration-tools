@@ -58,7 +58,7 @@ type Metadata struct {
 	TotalKeyCount int64 `json:"total_key_count"`
 }
 
-func convertAndBackupStateDBData(fromVersion string, toVersion string) (err error) {
+func createInitialStateData(fromVersion string, toVersion string) (err error) {
 	startTime := time.Now()
 
 	startTimeStr := startTime.Format("20060102_150405")
@@ -407,9 +407,9 @@ func cleanup(instanceDirName string) {
 	utils.DeleteDirAndFiles(path.Join(os.TempDir(), tmpDirectoryName, instanceDirName))
 }
 
-var convertAndBackupCmd = &cobra.Command{
-	Use:   "convert-and-backup [fromVersion] [toVersion]",
-	Short: "Convert and backup data for migration",
+var createInitialStateDataCmd = &cobra.Command{
+	Use:   "create-initial-state-data [fromVersion] [toVersion]",
+	Short: "Create initial ABCI state data for InitChain on migration",
 	Args:  cobra.MinimumNArgs(2),
 	PreRun: func(cmd *cobra.Command, args []string) {
 		curDir, _ := os.Getwd()
@@ -428,10 +428,10 @@ var convertAndBackupCmd = &cobra.Command{
 		viper.SetDefault("BLOCK_NUMBER", "")
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return convertAndBackupStateDBData(args[0], args[1])
+		return createInitialStateData(args[0], args[1])
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(convertAndBackupCmd)
+	rootCmd.AddCommand(createInitialStateDataCmd)
 }

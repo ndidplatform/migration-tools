@@ -235,6 +235,71 @@ func Restore(
 	return nil
 }
 
+func InitNDID(
+	ndidID string,
+	nodeMasterPublicKeyFilepath string,
+	nodePublicKeyFilepath string,
+	keyDir string,
+	tendermintRPCHost string,
+	tendermintRPCPort string,
+	backupDataDir string,
+	chainHistoryFileName string,
+) (err error) {
+	ndidKeyFile, err := os.Open(keyDir + "ndid")
+	if err != nil {
+		return err
+	}
+	defer ndidKeyFile.Close()
+	data, err := ioutil.ReadAll(ndidKeyFile)
+	if err != nil {
+		return err
+	}
+	ndidMasterKeyFile, err := os.Open(keyDir + "ndid_master")
+	if err != nil {
+		return err
+	}
+	defer ndidMasterKeyFile.Close()
+	dataMaster, err := ioutil.ReadAll(ndidMasterKeyFile)
+	if err != nil {
+		return err
+	}
+
+	logger, err := _log.NewLogger(&_log.Configuration{
+		EnableConsole:     true,
+		ConsoleLevel:      "info",
+		ConsoleJSONFormat: false,
+		Color:             true,
+	}, _log.InstanceGoLogger)
+	if err != nil {
+		return err
+	}
+	tmClient, err := tm_client.New(logger)
+	if err != nil {
+		return err
+	}
+	_, err = tmClient.Connect(tendermintRPCHost, tendermintRPCPort)
+	if err != nil {
+		return err
+	}
+	defer tmClient.Close()
+
+	ndidPrivKey := utils.GetPrivateKeyFromString(string(data))
+	ndidMasterPrivKey := utils.GetPrivateKeyFromString(string(dataMaster))
+	err = initNDID(
+		tmClient,
+		ndidPrivKey,
+		ndidMasterPrivKey,
+		ndidID,
+		backupDataDir,
+		chainHistoryFileName,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func SetNodeKeys(
 	ndidID string,
 	nodeMasterPublicKeyFilepath string,
@@ -370,7 +435,16 @@ func initNDID(
 		return err
 	}
 
-	log.Println("InitNDID DeliverTx log:", result.DeliverTx.Log)
+	log.Printf("InitNDID CheckTx code: %d log: %s\n", result.CheckTx.Code, result.CheckTx.Log)
+	log.Printf("InitNDID DeliverTx code: %d log: %s\n", result.DeliverTx.Code, result.DeliverTx.Log)
+
+	if result.CheckTx.Code != 0 {
+		return fmt.Errorf("InitNDID CheckTx non-0 code: %d", result.CheckTx.Code)
+	}
+
+	if result.DeliverTx.Code != 0 {
+		return fmt.Errorf("InitNDID DeliverTx non-0 code: %d", result.DeliverTx.Code)
+	}
 
 	return nil
 }
