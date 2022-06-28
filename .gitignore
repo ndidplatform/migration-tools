@@ -1,6 +1,7 @@
 # Backup data
 _backup_data/
 _backup_*_data/
+_initial_state_data/
 
 # Dependency
 vendor/

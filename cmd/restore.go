@@ -41,8 +41,8 @@ func restore(toVersion string) (err error) {
 	startTime := time.Now()
 
 	ndidID := viper.GetString("NDID_NODE_ID")
-	backupDataDir := viper.GetString("BACKUP_DATA_DIR")
-	backupDataFileName := viper.GetString("BACKUP_DATA_FILENAME")
+	backupDataDir := viper.GetString("INITIAL_STATE_DATA_DIR")
+	backupDataFileName := viper.GetString("INITIAL_STATE_DATA_FILENAME")
 	chainHistoryFileName := viper.GetString("CHAIN_HISTORY_FILENAME")
 	keyDir := viper.GetString("KEY_DIR")
 	tendermintRPCHost := viper.GetString("TENDERMINT_RPC_HOST")
@@ -118,8 +118,8 @@ var restoreCmd = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {
 		// curDir, _ := os.Getwd()
 		viper.SetDefault("NDID_NODE_ID", "NDID")
-		viper.SetDefault("BACKUP_DATA_DIR", "./_backup_data/")
-		viper.SetDefault("BACKUP_DATA_FILENAME", "data")
+		viper.SetDefault("INITIAL_STATE_DATA_DIR", "./_initial_state_data/")
+		viper.SetDefault("INITIAL_STATE_DATA_FILENAME", "data")
 		// viper.SetDefault("BACKUP_VALIDATORS_FILENAME", "validators")
 		viper.SetDefault("CHAIN_HISTORY_FILENAME", "chain_history")
 		viper.SetDefault("KEY_DIR", "./dev_keys/")

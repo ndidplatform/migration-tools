@@ -45,7 +45,7 @@ func initNdid(version string) (err error) {
 	tendermintRPCHost := viper.GetString("TENDERMINT_RPC_HOST")
 	tendermintRPCPort := viper.GetString("TENDERMINT_RPC_PORT")
 
-	backupDataDir := viper.GetString("BACKUP_DATA_DIR")
+	initialStateDataDir := viper.GetString("INITIAL_STATE_DATA_DIR")
 	chainHistoryFileName := viper.GetString("CHAIN_HISTORY_FILENAME")
 
 	switch version {
@@ -57,7 +57,7 @@ func initNdid(version string) (err error) {
 			keyDir,
 			tendermintRPCHost,
 			tendermintRPCPort,
-			backupDataDir,
+			initialStateDataDir,
 			chainHistoryFileName,
 		)
 	default:
@@ -80,7 +80,7 @@ var initNdidCmd = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {
 		// curDir, _ := os.Getwd()
 		viper.SetDefault("NDID_NODE_ID", "NDID")
-		viper.SetDefault("BACKUP_DATA_DIR", "./_backup_data/")
+		viper.SetDefault("INITIAL_STATE_DATA_DIR", "./_initial_state_data/")
 		viper.SetDefault("CHAIN_HISTORY_FILENAME", "chain_history")
 		viper.SetDefault("KEY_DIR", "./dev_keys/")
 		viper.SetDefault("TENDERMINT_RPC_HOST", "localhost")

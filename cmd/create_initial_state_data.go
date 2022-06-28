@@ -49,7 +49,7 @@ var stateDBDataVersions []string = []string{"1", "2", "3", "4", "5", "6", "7"}
 var logKeysWritten = false
 var logKeysWrittenEvery int64 = 100000
 
-type BackupKeyValue struct {
+type KeyValue struct {
 	Key   []byte `json:"key"`
 	Value []byte `json:"value"`
 }
@@ -92,15 +92,15 @@ func createInitialStateData(fromVersion string, toVersion string) (err error) {
 	logKeysWritten = viper.GetBool("LOG_KEYS_WRITTEN")
 	logKeysWrittenEvery = viper.GetInt64("LOG_KEYS_WRITTEN_EVERY")
 
-	backupDataDirectoryPath := viper.GetString("BACKUP_DATA_DIR")
-	backupDataDirectoryPath = path.Join(backupDataDirectoryPath, instanceDirName)
-	utils.CreateDirIfNotExist(backupDataDirectoryPath)
+	initialStateDataDirectoryPath := viper.GetString("INITIAL_STATE_DATA_DIR")
+	initialStateDataDirectoryPath = path.Join(initialStateDataDirectoryPath, instanceDirName)
+	utils.CreateDirIfNotExist(initialStateDataDirectoryPath)
 
-	backupDataFilename := viper.GetString("BACKUP_DATA_FILENAME")
+	initialStateDataFilename := viper.GetString("INITIAL_STATE_DATA_FILENAME")
 	// backupValidatorsFilename := viper.GetString("BACKUP_VALIDATORS_FILENAME")
-	backupChainHistoryFilename := viper.GetString("CHAIN_HISTORY_FILENAME")
+	chainHistoryFilename := viper.GetString("CHAIN_HISTORY_FILENAME")
 	// backupBlockNumberStr := viper.GetString("BLOCK_NUMBER")
-	backupMetadataFilename := viper.GetString("METADATA_FILENAME")
+	initialStateMetadataFilename := viper.GetString("METADATA_FILENAME")
 
 	if fromVersion == toVersion {
 		// TODO: migrate from/to same version, no data structure conversion
@@ -113,23 +113,23 @@ func createInitialStateData(fromVersion string, toVersion string) (err error) {
 			stateDBDataFromVersionIndex,
 			stateDBDataToVersionIndex,
 			instanceDirName,
-			backupDataDirectoryPath,
-			backupChainHistoryFilename,
-			backupDataFilename,
-			backupMetadataFilename,
+			initialStateDataDirectoryPath,
+			chainHistoryFilename,
+			initialStateDataFilename,
+			initialStateMetadataFilename,
 		)
 		if err != nil {
 			return err
 		}
 	}
 
-	backupDataDirectoryAbsolutePath, err := filepath.Abs(backupDataDirectoryPath)
+	initialStateDataDirectoryAbsolutePath, err := filepath.Abs(initialStateDataDirectoryPath)
 	if err != nil {
-		log.Println("backup directory:", backupDataDirectoryPath)
+		log.Println("initial state directory:", initialStateDataDirectoryPath)
 	} else {
-		log.Println("backup directory:", backupDataDirectoryAbsolutePath)
+		log.Println("initial state directory:", initialStateDataDirectoryAbsolutePath)
 	}
-	log.Println("convert and backup done")
+	log.Println("create initial state data done")
 	log.Println("time used:", time.Since(startTime))
 
 	return nil
@@ -140,10 +140,10 @@ func loopConvert(
 	stateDBDataFromVersionIndex int,
 	stateDBDataToVersionIndex int,
 	instanceDirName string,
-	backupDataDirectoryPath string,
-	backupChainHistoryFilename string,
-	backupDataFilename string,
-	backupMetadataFilename string,
+	initialStateDataDirectoryPath string,
+	chainHistoryFilename string,
+	initialStateDataFilename string,
+	initialStateMetadataFilename string,
 ) (err error) {
 	log.Println("converting version:", stateDBDataVersions[i], "to version:", stateDBDataVersions[i+1])
 
@@ -165,7 +165,7 @@ func loopConvert(
 		log.Println("read from input DB")
 	}
 
-	var backupKeyCount int64 = 0
+	var initialStateKeyCount int64 = 0
 
 	var saveNewChainHistory func(chainHistory []byte) (err error)
 	var saveKeyValue func(key []byte, value []byte) (err error)
@@ -176,27 +176,28 @@ func loopConvert(
 
 		saveNewChainHistory = func(chainHistory []byte) (err error) {
 			err = utils.AppendLineToFile(
-				path.Join(backupDataDirectoryPath, backupChainHistoryFilename),
+				path.Join(initialStateDataDirectoryPath, chainHistoryFilename),
 				chainHistory,
 			)
 			if err != nil {
 				return err
 			}
-			// backupKeyCount++
-			if logKeysWritten && backupKeyCount%logKeysWrittenEvery == 0 {
-				log.Println("keys written:", backupKeyCount)
-			}
+			// initialStateKeyCount++
+			// if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
+			// 	log.Println("keys written:", initialStateKeyCount)
+			// }
+			log.Println("chain history written")
 			return nil
 		}
 
-		backupDataFile, err := utils.OpenFileForAppend(path.Join(backupDataDirectoryPath, backupDataFilename))
+		initialStateDataFile, err := utils.OpenFileForAppend(path.Join(initialStateDataDirectoryPath, initialStateDataFilename))
 		if err != nil {
 			return err
 		}
-		defer backupDataFile.Close()
+		defer initialStateDataFile.Close()
 
 		saveKeyValue = func(key, value []byte) (err error) {
-			var kv BackupKeyValue
+			var kv KeyValue
 			kv.Key = key
 			kv.Value = value
 			jsonStr, err := json.Marshal(kv)
@@ -204,15 +205,15 @@ func loopConvert(
 				return err
 			}
 			err = utils.AppendLineToOpenedFile(
-				backupDataFile,
+				initialStateDataFile,
 				jsonStr,
 			)
 			if err != nil {
 				return err
 			}
-			backupKeyCount++
-			if logKeysWritten && backupKeyCount%logKeysWrittenEvery == 0 {
-				log.Println("keys written:", backupKeyCount)
+			initialStateKeyCount++
+			if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
+				log.Println("keys written:", initialStateKeyCount)
 			}
 			return nil
 		}
@@ -237,10 +238,11 @@ func loopConvert(
 			if err != nil {
 				return err
 			}
-			// backupKeyCount++
-			if logKeysWritten && backupKeyCount%logKeysWrittenEvery == 0 {
-				log.Println("keys written:", backupKeyCount)
-			}
+			// initialStateKeyCount++
+			// if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
+			// 	log.Println("keys written:", initialStateKeyCount)
+			// }
+			log.Println("chain history written")
 			return nil
 		}
 		saveKeyValue = func(key, value []byte) (err error) {
@@ -254,9 +256,9 @@ func loopConvert(
 			if err != nil {
 				return err
 			}
-			backupKeyCount++
-			if logKeysWritten && backupKeyCount%logKeysWrittenEvery == 0 {
-				log.Println("keys written:", backupKeyCount)
+			initialStateKeyCount++
+			if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
+				log.Println("keys written:", initialStateKeyCount)
 			}
 			return nil
 		}
@@ -388,17 +390,17 @@ func loopConvert(
 
 	// write metadata file
 	var metadata Metadata
-	metadata.TotalKeyCount = backupKeyCount
+	metadata.TotalKeyCount = initialStateKeyCount
 	metadataJson, err := json.Marshal(metadata)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(path.Join(backupDataDirectoryPath, backupMetadataFilename), metadataJson, 0644)
+	err = ioutil.WriteFile(path.Join(initialStateDataDirectoryPath, initialStateMetadataFilename), metadataJson, 0644)
 	if err != nil {
 		return err
 	}
 
-	log.Println("total backup key count:", backupKeyCount)
+	log.Println("total initial state key count:", initialStateKeyCount)
 
 	return nil
 }
@@ -420,8 +422,8 @@ var createInitialStateDataCmd = &cobra.Command{
 
 		viper.SetDefault("LOG_KEYS_WRITTEN", false)
 		viper.SetDefault("LOG_KEYS_WRITTEN_EVERY", 100000)
-		viper.SetDefault("BACKUP_DATA_DIR", "./_backup_data/")
-		viper.SetDefault("BACKUP_DATA_FILENAME", "data")
+		viper.SetDefault("INITIAL_STATE_DATA_DIR", "./_initial_state_data/")
+		viper.SetDefault("INITIAL_STATE_DATA_FILENAME", "data")
 		viper.SetDefault("BACKUP_VALIDATORS_FILENAME", "validators")
 		viper.SetDefault("CHAIN_HISTORY_FILENAME", "chain_history")
 		viper.SetDefault("METADATA_FILENAME", "metadata")
