@@ -36,6 +36,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"sync"
 
 	protoParam "github.com/ndidplatform/migration-tools/did/v7/protos/param"
@@ -283,6 +284,12 @@ func InitNDID(
 	}
 	defer tmClient.Close()
 
+	tmStatus, err := tmClient.Status()
+	if err != nil {
+		return err
+	}
+	currentChainID = tmStatus.NodeInfo.Network
+
 	ndidPrivKey := utils.GetPrivateKeyFromString(string(data))
 	ndidMasterPrivKey := utils.GetPrivateKeyFromString(string(dataMaster))
 	err = initNDID(
@@ -292,6 +299,61 @@ func InitNDID(
 		ndidID,
 		backupDataDir,
 		chainHistoryFileName,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func EndInit(
+	ndidID string,
+	nodePublicKeyFilepath string,
+	keyDir string,
+	tendermintRPCHost string,
+	tendermintRPCPort string,
+) (err error) {
+	ndidKeyFile, err := os.Open(keyDir + "ndid")
+	if err != nil {
+		return err
+	}
+	defer ndidKeyFile.Close()
+	data, err := ioutil.ReadAll(ndidKeyFile)
+	if err != nil {
+		return err
+	}
+
+	logger, err := _log.NewLogger(&_log.Configuration{
+		EnableConsole:     true,
+		ConsoleLevel:      "info",
+		ConsoleJSONFormat: false,
+		Color:             true,
+	}, _log.InstanceGoLogger)
+	if err != nil {
+		return err
+	}
+	tmClient, err := tm_client.New(logger)
+	if err != nil {
+		return err
+	}
+	_, err = tmClient.Connect(tendermintRPCHost, tendermintRPCPort)
+	if err != nil {
+		return err
+	}
+	defer tmClient.Close()
+
+	tmStatus, err := tmClient.Status()
+	if err != nil {
+		return err
+	}
+	currentChainID = tmStatus.NodeInfo.Network
+
+	ndidPrivKey := utils.GetPrivateKeyFromString(string(data))
+	err = endInit(
+		tmClient,
+		ndidPrivKey,
+		ndidID,
 	)
 	if err != nil {
 		return err
@@ -380,7 +442,7 @@ func initNDID(
 	backupDataDir string,
 	chainHistoryFileName string,
 ) (err error) {
-	chainHistoryData, err := ioutil.ReadFile(backupDataDir + chainHistoryFileName)
+	chainHistoryData, err := ioutil.ReadFile(path.Join(backupDataDir, chainHistoryFileName))
 	if err != nil {
 		return err
 	}
@@ -436,11 +498,12 @@ func initNDID(
 	}
 
 	log.Printf("InitNDID CheckTx code: %d log: %s\n", result.CheckTx.Code, result.CheckTx.Log)
-	log.Printf("InitNDID DeliverTx code: %d log: %s\n", result.DeliverTx.Code, result.DeliverTx.Log)
 
 	if result.CheckTx.Code != 0 {
 		return fmt.Errorf("InitNDID CheckTx non-0 code: %d", result.CheckTx.Code)
 	}
+
+	log.Printf("InitNDID DeliverTx code: %d log: %s\n", result.DeliverTx.Code, result.DeliverTx.Log)
 
 	if result.DeliverTx.Code != 0 {
 		return fmt.Errorf("InitNDID DeliverTx non-0 code: %d", result.DeliverTx.Code)
@@ -634,7 +697,18 @@ func endInit(
 	if err != nil {
 		return err
 	}
-	log.Println("EndInit DeliverTx log:", result.DeliverTx.Log)
+
+	log.Printf("EndInit CheckTx code: %d log: %s\n", result.CheckTx.Code, result.CheckTx.Log)
+
+	if result.CheckTx.Code != 0 {
+		return fmt.Errorf("EndInit CheckTx non-0 code: %d", result.CheckTx.Code)
+	}
+
+	log.Printf("EndInit DeliverTx code: %d log: %s\n", result.DeliverTx.Code, result.DeliverTx.Log)
+
+	if result.DeliverTx.Code != 0 {
+		return fmt.Errorf("EndInit DeliverTx non-0 code: %d", result.DeliverTx.Code)
+	}
 
 	return nil
 }
@@ -688,11 +762,12 @@ func updateNode(
 	}
 
 	log.Printf("UpdateNode CheckTx code: %d log: %s\n", result.CheckTx.Code, result.CheckTx.Log)
-	log.Printf("UpdateNode DeliverTx code: %d log: %s\n", result.DeliverTx.Code, result.DeliverTx.Log)
 
 	if result.CheckTx.Code != 0 {
 		return fmt.Errorf("UpdateNode CheckTx non-0 code: %d", result.CheckTx.Code)
 	}
+
+	log.Printf("UpdateNode DeliverTx code: %d log: %s\n", result.DeliverTx.Code, result.DeliverTx.Log)
 
 	if result.DeliverTx.Code != 0 {
 		return fmt.Errorf("UpdateNode DeliverTx non-0 code: %d", result.DeliverTx.Code)

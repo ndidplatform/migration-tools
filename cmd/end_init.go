@@ -33,32 +33,25 @@ import (
 	v7 "github.com/ndidplatform/migration-tools/did/v7"
 )
 
-func initNdid(version string) (err error) {
+func endInit(version string) (err error) {
 	startTime := time.Now()
 
 	ndidID := viper.GetString("NDID_NODE_ID")
 	keyDir := viper.GetString("KEY_DIR")
 
-	nodeMasterPublicKeyFilepath := viper.GetString("NODE_MASTER_PUBLIC_KEY_FILEPATH")
 	nodePublicKeyFilepath := viper.GetString("NODE_PUBLIC_KEY_FILEPATH")
 
 	tendermintRPCHost := viper.GetString("TENDERMINT_RPC_HOST")
 	tendermintRPCPort := viper.GetString("TENDERMINT_RPC_PORT")
 
-	initialStateDataDir := viper.GetString("INITIAL_STATE_DATA_DIR")
-	chainHistoryFileName := viper.GetString("CHAIN_HISTORY_FILENAME")
-
 	switch version {
 	case "7":
-		err = v7.InitNDID(
+		err = v7.EndInit(
 			ndidID,
-			nodeMasterPublicKeyFilepath,
 			nodePublicKeyFilepath,
 			keyDir,
 			tendermintRPCHost,
 			tendermintRPCPort,
-			initialStateDataDir,
-			chainHistoryFileName,
 		)
 	default:
 		return errors.New("unsupported ABCI version")
@@ -73,24 +66,22 @@ func initNdid(version string) (err error) {
 	return err
 }
 
-var initNdidCmd = &cobra.Command{
-	Use:   "init-ndid [version]",
-	Short: "Run InitNDID",
+var endInitCmd = &cobra.Command{
+	Use:   "end-init [version]",
+	Short: "Run EndInit",
 	Args:  cobra.MinimumNArgs(1),
 	PreRun: func(cmd *cobra.Command, args []string) {
 		// curDir, _ := os.Getwd()
 		viper.SetDefault("NDID_NODE_ID", "NDID")
-		viper.SetDefault("INITIAL_STATE_DATA_DIR", "./_initial_state_data/")
-		viper.SetDefault("CHAIN_HISTORY_FILENAME", "chain_history")
 		viper.SetDefault("KEY_DIR", "./dev_keys/")
 		viper.SetDefault("TENDERMINT_RPC_HOST", "localhost")
 		viper.SetDefault("TENDERMINT_RPC_PORT", "45000")
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return initNdid(args[0])
+		return endInit(args[0])
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(initNdidCmd)
+	rootCmd.AddCommand(endInitCmd)
 }
