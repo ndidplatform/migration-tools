@@ -481,7 +481,6 @@ func initNDID(
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
 	tx.Params = paramJSON
-	tx.ChainId = currentChainID
 	tx.Nonce = nonce
 	tx.Signature = signature
 	tx.NodeId = string(initNDIDparam.NodeID)
@@ -539,7 +538,6 @@ func setInitData(
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
 	tx.Params = paramJSON
-	tx.ChainId = currentChainID
 	// tx.Nonce = []byte(nonce)
 	// tx.Signature = signature
 	tx.NodeId = ndidID
@@ -615,7 +613,6 @@ func setInitData_pb(
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
 	tx.Params = paramPbByte
-	tx.ChainId = currentChainID
 	// tx.Nonce = []byte(nonce)
 	// tx.Signature = signature
 	tx.NodeId = ndidID
@@ -682,7 +679,6 @@ func endInit(
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
 	tx.Params = paramJSON
-	tx.ChainId = currentChainID
 	tx.Nonce = nonce
 	tx.Signature = signature
 	tx.NodeId = ndidID
@@ -745,7 +741,6 @@ func updateNode(
 	var tx protoTm.Tx
 	tx.Method = string(fnName)
 	tx.Params = paramJSON
-	tx.ChainId = currentChainID
 	tx.Nonce = []byte(nonce)
 	tx.Signature = signature
 	tx.NodeId = ndidID
