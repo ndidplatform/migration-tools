@@ -153,6 +153,9 @@ func ConvertStateDBDataV6ToV7(
 		key = bytes.TrimPrefix(key, v6.KvPairPrefixKey)
 	}
 	switch {
+	case strings.HasPrefix(string(key), "stateKey"):
+		// ABCI state metadata
+		// Do not save
 	case strings.HasPrefix(string(key), "lastBlock"):
 		// Last block
 		// Do not save

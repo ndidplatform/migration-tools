@@ -104,6 +104,9 @@ func ConvertStateDBDataV3ToV4(
 		key = bytes.TrimPrefix(key, v3.KvPairPrefixKey)
 	}
 	switch {
+	case strings.HasPrefix(string(key), "stateKey"):
+		// ABCI state metadata
+		// Do not save
 	case strings.Contains(string(key), "lastBlock"):
 		// Last block
 		// Do not save
