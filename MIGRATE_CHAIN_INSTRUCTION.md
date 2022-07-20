@@ -113,7 +113,7 @@
 
 4. Start Tendermint/ABCI (`did-tendermint`) (docker container) with environment variable `ABCI_INITIAL_STATE_DIR_PATH` points to directory generated in step 4 of ["Create initial ABCI state data"](#create-initial-abci-state-data) to load initial state on `InitChain`. Then, wait for Tendermint to finish chain initialization and block 1 is created.
 
-5. Copy `master private key` ของ NDID ไปวางไว้ที่ `$GOPATH/src/github.com/ndidplatform/migration-tools/key/` ตั้งชื่อไฟล์ว่า `ndid_master` และ Copy `private key` ของ NDID ไปวางไว้ที่ `$GOPATH/src/github.com/ndidplatform/migration-tools/key/` ตั้งชื่อไฟล์ว่า `ndid` (ถ้าใช้ external key service เช่น HSM ให้ใช้ key ใดๆก่อนก็ได้ แล้วสั่งเปลี่ยน public key หลัง restore สำเร็จ)
+5. Copy `master private key` ของ NDID ไปวางไว้ที่ `./dev_keys/` (หรือ directory path อื่นตาม environment variable `KEY_DIR` ที่กำหนด) ตั้งชื่อไฟล์ว่า `ndid_master` และ Copy `private key` ของ NDID ไปวางไว้ที่ `./dev_keys/` (หรือ directory path อื่นตาม environment variable `KEY_DIR` ที่กำหนด) ตั้งชื่อไฟล์ว่า `ndid` (ถ้าใช้ external key service เช่น HSM ให้ใช้ key ใดๆก่อนก็ได้ แล้วสั่งเปลี่ยน public key หลัง restore สำเร็จ)
 
 6. Run `InitNDID` and `EndInit`.
 
