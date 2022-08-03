@@ -419,6 +419,12 @@ func SetNodeKeys(
 	}
 	defer tmClient.Close()
 
+	tmStatus, err := tmClient.Status()
+	if err != nil {
+		return err
+	}
+	currentChainID = tmStatus.NodeInfo.Network
+
 	ndidMasterPrivKey := utils.GetPrivateKeyFromString(string(dataMaster))
 	err = updateNode(
 		tmClient,
