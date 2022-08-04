@@ -88,7 +88,7 @@ func restore(toVersion string) (err error) {
 			tendermintRPCHost,
 			tendermintRPCPort,
 		)
-	case "7":
+	case "7", "8":
 		err = v7.Restore(
 			ndidID,
 			backupDataDir,

@@ -49,7 +49,7 @@ func initNdid(version string) (err error) {
 	chainHistoryFileName := viper.GetString("CHAIN_HISTORY_FILENAME")
 
 	switch version {
-	case "7":
+	case "7", "8":
 		err = v7.InitNDID(
 			ndidID,
 			nodeMasterPublicKeyFilepath,

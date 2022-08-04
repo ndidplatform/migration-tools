@@ -45,7 +45,7 @@ func endInit(version string) (err error) {
 	tendermintRPCPort := viper.GetString("TENDERMINT_RPC_PORT")
 
 	switch version {
-	case "7":
+	case "7", "8":
 		err = v7.EndInit(
 			ndidID,
 			nodePublicKeyFilepath,

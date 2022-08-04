@@ -6,9 +6,11 @@ require (
 	github.com/BurntSushi/toml v1.0.0
 	github.com/ChainSafe/go-schnorrkel v1.0.0
 	github.com/btcsuite/btcd v0.22.0-beta
+	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
 	github.com/pkg/errors v0.9.1
+	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.10.1

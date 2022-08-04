@@ -44,7 +44,20 @@ import (
 
 const tmpDirectoryName = "ndid_migrate"
 
-var stateDBDataVersions []string = []string{"1", "2", "3", "4", "5", "6", "7"}
+type ABCIDataVersion struct {
+	ABCIStateVersion string
+	ABCIAppVersions  []string
+}
+
+var stateDBDataVersions []ABCIDataVersion = []ABCIDataVersion{
+	{"1", []string{"1"}},
+	{"2", []string{"2"}},
+	{"3", []string{"3"}},
+	{"4", []string{"4"}},
+	{"5", []string{"5"}},
+	{"6", []string{"6"}},
+	{"7", []string{"7", "8"}},
+}
 
 var logKeysWritten = false
 var logKeysWrittenEvery int64 = 100000
@@ -56,6 +69,15 @@ type KeyValue struct {
 
 type Metadata struct {
 	TotalKeyCount int64 `json:"total_key_count"`
+}
+
+func contains(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
 
 func createInitialStateData(fromVersion string, toVersion string) (err error) {
@@ -71,10 +93,10 @@ func createInitialStateData(fromVersion string, toVersion string) (err error) {
 	var stateDBDataFromVersionIndex int = -1
 	var stateDBDataToVersionIndex int = -1
 	for index, stateDBDataVersion := range stateDBDataVersions {
-		if stateDBDataVersion == fromVersion {
+		if contains(fromVersion, stateDBDataVersion.ABCIAppVersions) {
 			stateDBDataFromVersionIndex = index
 		}
-		if stateDBDataVersion == toVersion {
+		if contains(toVersion, stateDBDataVersion.ABCIAppVersions) {
 			stateDBDataToVersionIndex = index
 		}
 	}
@@ -102,16 +124,9 @@ func createInitialStateData(fromVersion string, toVersion string) (err error) {
 	// backupBlockNumberStr := viper.GetString("BLOCK_NUMBER")
 	initialStateMetadataFilename := viper.GetString("METADATA_FILENAME")
 
-	if fromVersion == toVersion {
-		// TODO: migrate from/to same version, no data structure conversion
-		return errors.New("not supported yet")
-	}
-
-	for i := stateDBDataFromVersionIndex; i < stateDBDataToVersionIndex; i++ {
-		err = loopConvert(
-			i,
-			stateDBDataFromVersionIndex,
-			stateDBDataToVersionIndex,
+	if stateDBDataFromVersionIndex == stateDBDataToVersionIndex {
+		err = createInitStateDataSameVersion(
+			stateDBDataVersions[stateDBDataFromVersionIndex].ABCIStateVersion,
 			instanceDirName,
 			initialStateDataDirectoryPath,
 			chainHistoryFilename,
@@ -120,6 +135,22 @@ func createInitialStateData(fromVersion string, toVersion string) (err error) {
 		)
 		if err != nil {
 			return err
+		}
+	} else {
+		for i := stateDBDataFromVersionIndex; i < stateDBDataToVersionIndex; i++ {
+			err = loopConvert(
+				i,
+				stateDBDataFromVersionIndex,
+				stateDBDataToVersionIndex,
+				instanceDirName,
+				initialStateDataDirectoryPath,
+				chainHistoryFilename,
+				initialStateDataFilename,
+				initialStateMetadataFilename,
+			)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -131,6 +162,97 @@ func createInitialStateData(fromVersion string, toVersion string) (err error) {
 	}
 	log.Println("create initial state data done")
 	log.Println("time used:", time.Since(startTime))
+
+	return nil
+}
+
+func createInitStateDataSameVersion(
+	stateVersion string,
+	instanceDirName string,
+	initialStateDataDirectoryPath string,
+	chainHistoryFilename string,
+	initialStateDataFilename string,
+	initialStateMetadataFilename string,
+) (err error) {
+	log.Println("processing version:", stateVersion)
+
+	log.Println("read from input DB")
+
+	var initialStateKeyCount int64 = 0
+
+	var saveNewChainHistory func(chainHistory []byte) (err error)
+	var saveKeyValue func(key []byte, value []byte) (err error)
+
+	// Write to file
+	log.Println("write to file")
+
+	saveNewChainHistory = func(chainHistory []byte) (err error) {
+		err = utils.AppendLineToFile(
+			path.Join(initialStateDataDirectoryPath, chainHistoryFilename),
+			chainHistory,
+		)
+		if err != nil {
+			return err
+		}
+		// initialStateKeyCount++
+		// if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
+		// 	log.Println("keys written:", initialStateKeyCount)
+		// }
+		log.Println("chain history written")
+		return nil
+	}
+
+	initialStateDataFile, err := utils.OpenFileForAppend(path.Join(initialStateDataDirectoryPath, initialStateDataFilename))
+	if err != nil {
+		return err
+	}
+	defer initialStateDataFile.Close()
+
+	saveKeyValue = func(key, value []byte) (err error) {
+		var kv KeyValue
+		kv.Key = key
+		kv.Value = value
+		jsonStr, err := json.Marshal(kv)
+		if err != nil {
+			return err
+		}
+		err = utils.AppendLineToOpenedFile(
+			initialStateDataFile,
+			jsonStr,
+		)
+		if err != nil {
+			return err
+		}
+		initialStateKeyCount++
+		if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
+			log.Println("keys written:", initialStateKeyCount)
+		}
+		return nil
+	}
+
+	switch stateVersion {
+	case "7":
+		err = convert.ReadInputStateDBDataV7AndBackup(saveNewChainHistory, saveKeyValue)
+	default:
+		err = errors.New("not supported")
+	}
+	if err != nil {
+		return err
+	}
+
+	// write metadata file
+	var metadata Metadata
+	metadata.TotalKeyCount = initialStateKeyCount
+	metadataJson, err := json.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(path.Join(initialStateDataDirectoryPath, initialStateMetadataFilename), metadataJson, 0644)
+	if err != nil {
+		return err
+	}
+
+	log.Println("total initial state key count:", initialStateKeyCount)
 
 	return nil
 }
@@ -152,7 +274,7 @@ func loopConvert(
 	if i != stateDBDataFromVersionIndex {
 		log.Println("read from temp DB")
 
-		tempInputDb, err = leveldb.OpenFile(path.Join(os.TempDir(), tmpDirectoryName, instanceDirName, "db_version_"+stateDBDataVersions[i]), nil) // TODO: random string prefix on each run (prevent overwrite)
+		tempInputDb, err = leveldb.OpenFile(path.Join(os.TempDir(), tmpDirectoryName, instanceDirName, "db_version_"+stateDBDataVersions[i].ABCIStateVersion), nil) // TODO: random string prefix on each run (prevent overwrite)
 		if err != nil {
 			return err
 		}
@@ -221,7 +343,7 @@ func loopConvert(
 		// Write to Temp DB
 		log.Println("write to temp DB")
 
-		tempOutputDb, err := leveldb.OpenFile(path.Join(os.TempDir(), tmpDirectoryName, instanceDirName, "db_version_"+stateDBDataVersions[i+1]), nil) // TODO: random string prefix on each run (prevent overwrite)
+		tempOutputDb, err := leveldb.OpenFile(path.Join(os.TempDir(), tmpDirectoryName, instanceDirName, "db_version_"+stateDBDataVersions[i+1].ABCIStateVersion), nil) // TODO: random string prefix on each run (prevent overwrite)
 		if err != nil {
 			return err
 		}
@@ -264,7 +386,7 @@ func loopConvert(
 		}
 	}
 
-	switch stateDBDataVersions[i] {
+	switch stateDBDataVersions[i].ABCIStateVersion {
 	case "1":
 		// TODO: v1 -> v2
 		return errors.New("not supported yet")

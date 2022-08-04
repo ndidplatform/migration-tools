@@ -34,6 +34,7 @@ import (
 	tendermint_0_30_2 "github.com/ndidplatform/migration-tools/tendermint/0_30_2"
 	tendermint_0_32_1 "github.com/ndidplatform/migration-tools/tendermint/0_32_1"
 	tendermint_0_33_2 "github.com/ndidplatform/migration-tools/tendermint/0_33_2"
+	tendermint_0_34_19 "github.com/ndidplatform/migration-tools/tendermint/0_34_19"
 )
 
 func loadTendermintInfo(tendermintVersion string) (err error) {
@@ -48,6 +49,8 @@ func loadTendermintInfo(tendermintVersion string) (err error) {
 		_, err = tendermint_0_32_1.GetTendermintInfo(tmHome)
 	case "0.33.2":
 		_, err = tendermint_0_33_2.GetTendermintInfo(tmHome)
+	case "0.34.19":
+		_, err = tendermint_0_34_19.GetTendermintInfo(tmHome)
 	default:
 		return errors.New("unsupported Tendermint version")
 	}

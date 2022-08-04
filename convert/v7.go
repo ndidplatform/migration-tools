@@ -31,13 +31,12 @@ import (
 
 	"github.com/spf13/viper"
 
-	v6 "github.com/ndidplatform/migration-tools/did/v6"
-	didProtoV6 "github.com/ndidplatform/migration-tools/did/v6/protos/data"
+	v7 "github.com/ndidplatform/migration-tools/did/v7"
 	didProtoV7 "github.com/ndidplatform/migration-tools/did/v7/protos/data"
 	"github.com/ndidplatform/migration-tools/proto"
 )
 
-var knownKeysV6 []string = []string{
+var knownKeysV7 []string = []string{
 	"MasterNDID",
 	"InitState",
 	"lastBlock",
@@ -79,12 +78,12 @@ var knownKeysV6 []string = []string{
 	"val:",
 }
 
-func ConvertInputStateDBDataV6ToV7AndBackup(
+func ReadInputStateDBDataV7AndBackup(
 	saveNewChainHistory func(chainHistory []byte) (err error),
 	saveKeyValue func(key []byte, value []byte) (err error),
 ) (err error) {
 	tmHome := viper.GetString("TM_HOME")
-	currentChainData, err := v6.GetLastestTendermintData(tmHome)
+	currentChainData, err := v7.GetLastestTendermintData(tmHome)
 	if err != nil {
 		return err
 	}
@@ -93,21 +92,21 @@ func ConvertInputStateDBDataV6ToV7AndBackup(
 	dbDir := viper.GetString("ABCI_DB_DIR_PATH")
 	// backupBlockNumberStr := viper.GetString("BLOCK_NUMBER")
 
-	v6StateDB := v6.GetStateDB(dbType, dbDir)
-	ndidNodeID, err := v6StateDB.Get([]byte("MasterNDID"))
+	v7StateDB := v7.GetStateDB(dbType, dbDir)
+	ndidNodeID, err := v7StateDB.Get([]byte("MasterNDID"))
 	if err != nil {
 		return err
 	}
 
 	dbGet := func(key []byte) (value []byte, err error) {
-		return v6StateDB.Get(key)
+		return v7StateDB.Get(key)
 	}
 
 	var keyTypeStats map[string]int64 = make(map[string]int64)
 
 	var keysRead int64 = 0
 
-	itr, err := v6StateDB.Iterator(nil, nil)
+	itr, err := v7StateDB.Iterator(nil, nil)
 	if err != nil {
 		return err
 	}
@@ -115,7 +114,7 @@ func ConvertInputStateDBDataV6ToV7AndBackup(
 		key := itr.Key()
 		value := itr.Value()
 
-		keyPrefix, err := ConvertStateDBDataV6ToV7(
+		keyPrefix, err := ProcessStateDBDataV7(
 			key,
 			value,
 			string(ndidNodeID),
@@ -139,18 +138,18 @@ func ConvertInputStateDBDataV6ToV7AndBackup(
 	return nil
 }
 
-func ConvertStateDBDataV6ToV7(
+func ProcessStateDBDataV7(
 	key []byte,
 	value []byte,
 	ndidNodeID string,
-	currentChainData *v6.ChainHistoryDetail,
+	currentChainData *v7.ChainHistoryDetail,
 	dbGet func(key []byte) (value []byte, err error),
 	saveNewChainHistory func(chainHistory []byte) (err error),
 	saveKeyValue func(key []byte, value []byte) (err error),
 ) (keyType string, err error) {
 	// Delete prefix
-	if bytes.Contains(key, v6.KvPairPrefixKey) {
-		key = bytes.TrimPrefix(key, v6.KvPairPrefixKey)
+	if bytes.Contains(key, v7.KvPairPrefixKey) {
+		key = bytes.TrimPrefix(key, v7.KvPairPrefixKey)
 	}
 	switch {
 	case strings.HasPrefix(string(key), "stateKey"):
@@ -186,7 +185,7 @@ func ConvertStateDBDataV6ToV7(
 		// 	return err
 		// }
 	case strings.HasPrefix(string(key), "ChainHistoryInfo"):
-		var chainHistory v6.ChainHistory
+		var chainHistory v7.ChainHistory
 		if string(value) != "" {
 			err := json.Unmarshal([]byte(value), &chainHistory)
 			if err != nil {
@@ -210,103 +209,33 @@ func ConvertStateDBDataV6ToV7(
 	case strings.HasPrefix(string(key), "Request") && strings.HasSuffix(string(key), "versions"):
 		keyType = "Request"
 		// Versions of request
-		var keyVersionsV6 didProtoV6.KeyVersions
-		err := proto.Unmarshal([]byte(value), &keyVersionsV6)
+		var keyVersionsV7 didProtoV7.KeyVersions
+		err := proto.Unmarshal([]byte(value), &keyVersionsV7)
 		if err != nil {
 			panic(err)
 		}
-		latestVersion := strconv.FormatInt(keyVersionsV6.Versions[len(keyVersionsV6.Versions)-1], 10)
+		latestVersion := strconv.FormatInt(keyVersionsV7.Versions[len(keyVersionsV7.Versions)-1], 10)
 		keyParts := strings.Split(string(key), "|")
 		requestID := keyParts[1]
 
 		// Get last version of request detail
-		requestV6Key := "Request" + "|" + requestID + "|" + latestVersion
-		requestV6Value, err := dbGet([]byte(requestV6Key))
+		requestV7Key := "Request" + "|" + requestID + "|" + latestVersion
+		requestV7Value, err := dbGet([]byte(requestV7Key))
 		if err != nil {
 			return "", err
 		}
 
-		var requestV6 didProtoV6.Request
-		if err := proto.Unmarshal([]byte(requestV6Value), &requestV6); err != nil {
-			panic(err)
-		}
-
-		// data request, AS responses
-		var dataRequestListV7 []*didProtoV7.DataRequest = make([]*didProtoV7.DataRequest, 0)
-		for _, dataRequestV6 := range requestV6.DataRequestList {
-			responseListV7 := make([]*didProtoV7.ASResponse, 0)
-			for _, response := range dataRequestV6.ResponseList {
-				responseListV7 = append(responseListV7, &didProtoV7.ASResponse{
-					AsId:         response.AsId,
-					Signed:       response.Signed,
-					ReceivedData: response.ReceivedData,
-					ErrorCode:    response.ErrorCode,
-				})
-			}
-
-			dataRequestV7 := &didProtoV7.DataRequest{
-				ServiceId:         dataRequestV6.ServiceId,
-				AsIdList:          dataRequestV6.AsIdList,
-				MinAs:             dataRequestV6.MinAs,
-				RequestParamsHash: dataRequestV6.RequestParamsHash,
-				ResponseList:      responseListV7,
-			}
-			dataRequestListV7 = append(dataRequestListV7, dataRequestV7)
-		}
-
-		// IdP responses
-		var responseListV7 []*didProtoV7.Response = make([]*didProtoV7.Response, 0)
-		for _, responseV6 := range requestV6.ResponseList {
-			responseV7 := &didProtoV7.Response{
-				Ial:            responseV6.Ial,
-				Aal:            responseV6.Aal,
-				Status:         responseV6.Status,
-				Signature:      responseV6.Signature,
-				IdpId:          responseV6.IdpId,
-				ValidIal:       responseV6.ValidIal,
-				ValidSignature: responseV6.ValidSignature,
-				ErrorCode:      responseV6.ErrorCode,
-			}
-			responseListV7 = append(responseListV7, responseV7)
-		}
-
-		var requestV7 didProtoV7.Request = didProtoV7.Request{
-			RequestId:           requestV6.RequestId,
-			MinIdp:              requestV6.MinIdp,
-			MinAal:              requestV6.MinAal,
-			MinIal:              requestV6.MinIal,
-			RequestTimeout:      requestV6.RequestTimeout,
-			IdpIdList:           requestV6.IdpIdList,
-			DataRequestList:     dataRequestListV7,
-			RequestMessageHash:  requestV6.RequestMessageHash,
-			ResponseList:        responseListV7,
-			Closed:              requestV6.Closed,
-			TimedOut:            requestV6.TimedOut,
-			Purpose:             requestV6.Purpose,
-			Owner:               requestV6.Owner,
-			Mode:                requestV6.Mode,
-			UseCount:            requestV6.UseCount,
-			CreationBlockHeight: requestV6.CreationBlockHeight,
-			ChainId:             requestV6.ChainId,
-			RequestType:         "", // new field
-		}
-
-		requestV7Bytes, err := proto.DeterministicMarshal(&requestV7)
-		if err != nil {
-			panic(err)
-		}
-
 		// Set to 1 version
-		var keyVersionsV7 didProtoV7.KeyVersions = didProtoV7.KeyVersions{
+		var newKeyVersionsV7 didProtoV7.KeyVersions = didProtoV7.KeyVersions{
 			Versions: append(make([]int64, 0), 1),
 		}
-		newReqVersionsValue, err := proto.DeterministicMarshal(&keyVersionsV7)
+		newReqVersionsValue, err := proto.DeterministicMarshal(&newKeyVersionsV7)
 		if err != nil {
 			panic(err)
 		}
 		newReqDetailKey := "Request" + "|" + requestID + "|" + "1"
 		// Write request detail and Version of request detail
-		err = saveKeyValue([]byte(newReqDetailKey), requestV7Bytes)
+		err = saveKeyValue([]byte(newReqDetailKey), requestV7Value)
 		if err != nil {
 			return "", err
 		}
@@ -314,7 +243,7 @@ func ConvertStateDBDataV6ToV7(
 		if err != nil {
 			return "", err
 		}
-	case len(value) == 0 && !isKnownKeyV6(string(key)):
+	case len(value) == 0 && !isKnownKeyV7(string(key)):
 		// nonce
 		// Do not save
 	default:
@@ -340,8 +269,8 @@ func ConvertStateDBDataV6ToV7(
 	return keyType, nil
 }
 
-func isKnownKeyV6(key string) bool {
-	for _, knownKey := range knownKeysV6 {
+func isKnownKeyV7(key string) bool {
+	for _, knownKey := range knownKeysV7 {
 		if strings.HasPrefix(string(key), knownKey) {
 			return true
 		}
