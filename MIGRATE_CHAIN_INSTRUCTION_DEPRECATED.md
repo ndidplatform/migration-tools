@@ -1,4 +1,4 @@
-# Migrate chain instructions
+# Migrate chain instructions (DEPRECATED)
 
 ## Prerequisites
 
