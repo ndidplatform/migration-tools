@@ -173,7 +173,8 @@ func ProcessStateDBDataV7(
 	case strings.HasPrefix(string(key), "Accessor"):
 		// All key that have associate with Accessor
 		// Do not save
-	case strings.HasPrefix(string(key), "Request") && !strings.HasSuffix(string(key), "versions"):
+	case strings.HasPrefix(string(key), "Request") && !strings.HasSuffix(string(key), "versions") &&
+		!strings.HasPrefix(string(key), "RequestType"):
 		// Request detail
 		// Do not save
 	case strings.HasPrefix(string(key), "val:"):
