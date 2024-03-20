@@ -1,0 +1,293 @@
+syntax = "proto3";
+
+option go_package = "./;ndid_abci_state_v8";
+
+package ndid_abci_state_v8;
+
+import "google/protobuf/wrappers.proto";
+
+message KeyVersions {
+  repeated int64 versions = 1;
+}
+
+message NodeDetail {
+  string public_key = 1;
+  string master_public_key = 2;
+  string node_name = 3;
+  string role = 4;
+  double max_ial = 5;
+  double max_aal = 6;
+  repeated MQ mq = 7;
+  bool active = 8;
+  bool is_idp_agent = 9;
+  string proxy_node_id = 10;
+  string proxy_config = 11;
+  bool use_whitelist = 12;
+  repeated string whitelist = 13;
+  repeated string supported_request_message_data_url_type_list = 14;
+  bool on_the_fly_support = 15;
+}
+
+message MQ {
+  string ip = 1;
+  int64 port = 2;
+}
+
+message IdPList {
+  repeated string node_id = 1;
+}
+
+message NamespaceList {
+  repeated Namespace namespaces = 1;
+}
+
+message Namespace {
+  string namespace = 1;
+  string description = 2;
+  bool active = 3;
+  int32 allowed_identifier_count_in_reference_group = 4;
+  int32 allowed_active_identifier_count_in_reference_group = 5;
+}
+
+message ServiceDetailList {
+  repeated ServiceDetail services = 1;
+}
+
+message ServiceDetail {
+  string service_id = 1;
+  string service_name = 2;
+  string data_schema = 3;
+  string data_schema_version = 4;
+  bool active = 5;
+}
+
+message ApproveService {
+  bool active = 1;
+}
+
+message TimeOutBlockRegisterIdentity {
+  int64 time_out_block = 1;
+}
+
+message Proxy {
+  string proxy_node_id = 1;
+  string config = 2;
+}
+
+message BehindNodeList {
+  repeated string nodes = 1;
+}
+
+message Request {
+  string request_id = 1;
+  int64 min_idp = 2;
+  double min_aal = 3;
+  double min_ial = 4;
+  int64 request_timeout = 5;
+  repeated string idp_id_list = 6;
+  repeated DataRequest data_request_list = 7;
+  string request_message_hash = 8;
+  repeated Response response_list = 9;
+  bool closed = 10;
+  bool timed_out = 11;
+  string purpose = 12;
+  string owner = 13;
+  int32 mode = 14;
+  int64 use_count = 15;
+  int64 creation_block_height = 16;
+  string chain_id = 17;
+  string request_type = 18;
+}
+
+message Message {
+  string message_id = 1;
+  string message = 2;
+  string purpose = 3;
+  string owner = 4;
+  int64 creation_block_height = 5;
+  string chain_id = 6;
+}
+
+message ASResponse {
+  string as_id = 1;
+  bool signed = 2;
+  bool received_data = 3;
+  int32 error_code = 4;
+}
+
+message DataRequest {
+  string service_id = 1;
+  repeated string as_id_list = 2;
+  int64 min_as = 3;
+  string request_params_hash = 4;
+  repeated ASResponse response_list = 6;
+}
+
+message Response {
+  double ial = 1;
+  double aal = 2;
+  string status = 3;
+  string signature = 4;
+  string idp_id = 5;
+  string valid_ial = 6;
+  string valid_signature = 7;
+  int32 error_code = 8;
+}
+
+message ReportList {
+  repeated Report reports = 1;
+}
+
+message Report {
+  string method = 1;
+  double price = 2;
+  string data = 3;
+}
+
+message Accessor  {
+  string accessor_id = 1;
+  string accessor_type = 2;
+  string accessor_public_key = 3;
+  bool active = 4;
+  string owner = 5;
+}
+
+message MsqDesList {
+  repeated Node nodes = 1;
+}
+
+message Node {
+  double ial = 1;
+  string node_id = 2;
+  bool active = 3;
+  bool first = 4;
+  int64 timeout_block = 5;
+}
+
+message ServiceList {
+  repeated Service services = 1;
+}
+
+message Service {
+  string service_id = 1;
+  double min_ial = 2;
+  double min_aal = 3;
+  bool active = 4;
+  bool suspended = 5;
+  repeated string supported_namespace_list = 6;
+}
+
+message ServiceDesList {
+  repeated ASNode node = 1;
+}
+
+message ASNode {
+  string node_id = 1;
+  double min_ial = 2;
+  double min_aal = 3;
+  string service_id = 4;
+  repeated string supported_namespace_list = 5;
+  bool active = 6;
+}
+
+message RPList {
+  repeated string node_id = 1;
+}
+
+message ASList {
+  repeated string node_id = 1;
+}
+
+message AllList {
+  repeated string node_id = 1;
+}
+
+message AccessorInGroup {
+  repeated string accessors = 1;
+}
+
+message Token {
+  double amount = 1;
+}
+
+message TokenPrice {
+  double price = 1;
+}
+
+message ReferenceGroup {
+  repeated IdentityInRefGroup identities = 1;
+  repeated IdPInRefGroup idps = 2;
+}
+
+message IdPInRefGroup {
+  string node_id = 1;
+  repeated int32 mode = 2;
+  repeated Accessor accessors = 3;
+  double ial = 4;
+  bool active = 5;
+  google.protobuf.BoolValue lial = 6;
+  google.protobuf.BoolValue laal = 7;
+}
+
+message IdentityInRefGroup {
+  string namespace = 1;
+  string identifier_hash = 2;
+  bool active = 3;
+}
+
+message AllowedModeList {
+  repeated int32 mode = 1;
+}
+
+message AllowedMinIalForRegisterIdentityAtFirstIdp {
+  double min_ial = 1;
+}
+
+message ErrorCode {
+  int32 error_code = 1;
+  string description = 2;
+}
+
+message ErrorCodeList {
+  repeated ErrorCode error_code = 2;
+}
+
+message ServicePriceCeilingList {
+  repeated ServicePriceCeilingByCurency price_ceiling_by_currency_list = 1;
+}
+
+message ServicePriceCeilingByCurency {
+  string currency = 1;
+  double price = 2;
+}
+
+message ServicePriceMinEffectiveDatetimeDelay {
+  uint32 duration_second = 1;
+}
+
+message ServicePriceList {
+  repeated ServicePrice service_price_list = 1;
+}
+
+message ServicePrice {
+  repeated ServicePriceByCurrency price_by_currency_list = 1;
+  int64 effective_datetime = 2;
+  string more_info_url = 3;
+  string detail = 4;
+  int64 creation_block_height = 5;
+  string creation_chain_id = 6;
+}
+
+message ServicePriceByCurrency {
+  string currency = 1;
+  double min_price = 2;
+  double max_price = 3;
+}
+
+message RequestType {
+  // string name = 1;
+}
+
+message SuppressedIdentityModificationNotificationNode {
+  // string node_id = 1;
+}

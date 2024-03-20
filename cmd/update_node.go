@@ -31,6 +31,7 @@ import (
 	"github.com/spf13/viper"
 
 	v7 "github.com/ndidplatform/migration-tools/did/v7"
+	v9 "github.com/ndidplatform/migration-tools/did/v9"
 )
 
 func updateNode(version string) (err error) {
@@ -39,8 +40,17 @@ func updateNode(version string) (err error) {
 	ndidID := viper.GetString("NDID_NODE_ID")
 	keyDir := viper.GetString("KEY_DIR")
 
+	// for v7, v8
 	nodeMasterPublicKeyFilepath := viper.GetString("NODE_NEW_MASTER_PUBLIC_KEY_FILEPATH")
 	nodePublicKeyFilepath := viper.GetString("NODE_NEW_PUBLIC_KEY_FILEPATH")
+
+	// for v9 or later
+	nodeSigningMasterPublicKeyFilepath := viper.GetString("NODE_NEW_SIGNING_MASTER_PUBLIC_KEY_FILEPATH")
+	nodeSigningMasterAlgorithm := viper.GetString("NODE_NEW_SIGNING_MASTER_ALGORITHM")
+	nodeSigningPublicKeyFilepath := viper.GetString("NODE_NEW_SIGNING_PUBLIC_KEY_FILEPATH")
+	nodeSigningAlgorithm := viper.GetString("NODE_NEW_SIGNING_ALGORITHM")
+	nodeEncryptionPublicKeyFilepath := viper.GetString("NODE_NEW_ENCRYPTION_PUBLIC_KEY_FILEPATH")
+	nodeEncryptionAlgorithm := viper.GetString("NODE_NEW_ENCRYPTION_ALGORITHM")
 
 	tendermintRPCHost := viper.GetString("TENDERMINT_RPC_HOST")
 	tendermintRPCPort := viper.GetString("TENDERMINT_RPC_PORT")
@@ -51,6 +61,19 @@ func updateNode(version string) (err error) {
 			ndidID,
 			nodeMasterPublicKeyFilepath,
 			nodePublicKeyFilepath,
+			keyDir,
+			tendermintRPCHost,
+			tendermintRPCPort,
+		)
+	case "9":
+		err = v9.SetNodeKeys(
+			ndidID,
+			nodeSigningMasterPublicKeyFilepath,
+			nodeSigningMasterAlgorithm,
+			nodeSigningPublicKeyFilepath,
+			nodeSigningAlgorithm,
+			nodeEncryptionPublicKeyFilepath,
+			nodeEncryptionAlgorithm,
 			keyDir,
 			tendermintRPCHost,
 			tendermintRPCPort,

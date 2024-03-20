@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Go version >= 1.13.0
+- Go version >= 1.18.0
 - (Optional) (for reading from LevelDB using C lib) LevelDB version >= 1.7 and snappy
 
 ## Getting Started

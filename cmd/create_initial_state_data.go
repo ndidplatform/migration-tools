@@ -25,7 +25,6 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -56,7 +55,8 @@ var stateDBDataVersions []ABCIDataVersion = []ABCIDataVersion{
 	{"4", []string{"4"}},
 	{"5", []string{"5"}},
 	{"6", []string{"6"}},
-	{"7", []string{"7", "8"}},
+	{"7", []string{"7", "8"}}, // state DB data structure v7 and v8 are the same
+	{"9", []string{"9"}},
 }
 
 var logKeysWritten = false
@@ -247,7 +247,7 @@ func createInitStateDataSameVersion(
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(path.Join(initialStateDataDirectoryPath, initialStateMetadataFilename), metadataJson, 0644)
+	err = os.WriteFile(path.Join(initialStateDataDirectoryPath, initialStateMetadataFilename), metadataJson, 0644)
 	if err != nil {
 		return err
 	}
@@ -505,6 +505,44 @@ func loopConvert(
 				return err
 			}
 		}
+	case "7":
+		// v7,v8 -> v9
+		if i == stateDBDataFromVersionIndex {
+			err = convert.ConvertInputStateDBDataV8ToV9AndBackup(saveNewChainHistory, saveKeyValue)
+		} else {
+			iter := tempInputDb.NewIterator(nil, nil)
+			for iter.Next() {
+				key := iter.Key()
+				value := iter.Value()
+
+				_, err = convert.ConvertStateDBDataV8ToV9(
+					key,
+					value,
+					"",
+					nil,
+					dbGet,
+					saveNewChainHistory,
+					saveKeyValue,
+				)
+				if err != nil {
+					return err
+				}
+			}
+			iter.Release()
+			err = iter.Error()
+			if err != nil {
+				return err
+			}
+
+			_, err = convert.AddNewStateDataToV9(
+				dbGet,
+				saveNewChainHistory,
+				saveKeyValue,
+			)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	if err != nil {
 		return err
@@ -517,7 +555,7 @@ func loopConvert(
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(path.Join(initialStateDataDirectoryPath, initialStateMetadataFilename), metadataJson, 0644)
+	err = os.WriteFile(path.Join(initialStateDataDirectoryPath, initialStateMetadataFilename), metadataJson, 0644)
 	if err != nil {
 		return err
 	}

@@ -31,6 +31,7 @@ import (
 	"github.com/spf13/viper"
 
 	v7 "github.com/ndidplatform/migration-tools/did/v7"
+	v9 "github.com/ndidplatform/migration-tools/did/v9"
 )
 
 func initNdid(version string) (err error) {
@@ -51,6 +52,17 @@ func initNdid(version string) (err error) {
 	switch version {
 	case "7", "8":
 		err = v7.InitNDID(
+			ndidID,
+			nodeMasterPublicKeyFilepath,
+			nodePublicKeyFilepath,
+			keyDir,
+			tendermintRPCHost,
+			tendermintRPCPort,
+			initialStateDataDir,
+			chainHistoryFileName,
+		)
+	case "9":
+		err = v9.InitNDID(
 			ndidID,
 			nodeMasterPublicKeyFilepath,
 			nodePublicKeyFilepath,
