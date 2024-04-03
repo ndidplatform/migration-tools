@@ -344,6 +344,68 @@ func ConvertStateDBDataV8ToV9(
 		if err != nil {
 			return "", err
 		}
+	case strings.HasPrefix(string(key), "RefGroupCode"):
+		keyType = "RefGroupCode"
+
+		keyParts := strings.Split(string(key), "|")
+		refGroupCode := keyParts[1]
+
+		var refGroupV8 didProtoV8.ReferenceGroup
+		if err := proto.Unmarshal([]byte(value), &refGroupV8); err != nil {
+			panic(err)
+		}
+
+		refGroupV9Identities := make([]*didProtoV9.IdentityInRefGroup, 0)
+		for _, identity := range refGroupV8.Identities {
+			refGroupV9Identities = append(refGroupV9Identities, &didProtoV9.IdentityInRefGroup{
+				Namespace:      identity.Namespace,
+				IdentifierHash: identity.IdentifierHash,
+				Active:         identity.Active,
+			})
+		}
+
+		refGroupV9Idps := make([]*didProtoV9.IdPInRefGroup, 0)
+		for _, idp := range refGroupV8.Idps {
+			accessorsV9 := make([]*didProtoV9.Accessor, 0)
+			for _, accessor := range idp.Accessors {
+				accessorsV9 = append(accessorsV9, &didProtoV9.Accessor{
+					AccessorId:          accessor.AccessorId,
+					AccessorType:        accessor.AccessorType,
+					AccessorPublicKey:   accessor.AccessorPublicKey,
+					Active:              accessor.Active,
+					Owner:               accessor.Owner,
+					CreationBlockHeight: 0,
+					CreationChainId:     "",
+				})
+			}
+
+			refGroupV9Idps = append(refGroupV9Idps, &didProtoV9.IdPInRefGroup{
+				NodeId:    idp.NodeId,
+				Mode:      idp.Mode,
+				Accessors: accessorsV9,
+				Ial:       idp.Ial,
+				Active:    idp.Active,
+				Lial:      idp.Lial,
+				Laal:      idp.Laal,
+			})
+		}
+
+		var refGroupV9 didProtoV9.ReferenceGroup = didProtoV9.ReferenceGroup{
+			Identities: refGroupV9Identities,
+			Idps:       refGroupV9Idps,
+		}
+
+		refGroupV9Value, err := proto.DeterministicMarshal(&refGroupV9)
+		if err != nil {
+			panic(err)
+		}
+
+		refGroupKey := v9.RefGroupCodeKeyPrefix + v9.KeySeparator + refGroupCode
+		// Write request detail and Version of request detail
+		err = saveKeyValue([]byte(refGroupKey), refGroupV9Value)
+		if err != nil {
+			return "", err
+		}
 	case strings.HasPrefix(string(key), "Request") && strings.HasSuffix(string(key), "versions"):
 		keyType = "Request"
 		// Versions of request
@@ -416,8 +478,8 @@ func ConvertStateDBDataV8ToV9(
 		switch {
 		// case strings.HasPrefix(string(key), "NodeID"):
 		// 	keyType = "NodeID"
-		case strings.HasPrefix(string(key), "RefGroupCode"):
-			keyType = "RefGroupCode"
+		// case strings.HasPrefix(string(key), "RefGroupCode"):
+		// 	keyType = "RefGroupCode"
 		case strings.HasPrefix(string(key), "SignData"):
 			keyType = "SignData"
 		case strings.HasPrefix(string(key), "accessorToRefCodeKey"):
