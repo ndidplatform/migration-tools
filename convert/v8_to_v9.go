@@ -284,9 +284,9 @@ func ConvertStateDBDataV8ToV9(
 			ProxyNodeId:                            nodeDetailV8.ProxyNodeId,
 			ProxyConfig:                            nodeDetailV8.ProxyConfig,
 			SupportedRequestMessageDataUrlTypeList: nodeDetailV8.SupportedRequestMessageDataUrlTypeList,
-			IsIdpAgent:                             false,
-			UseWhitelist:                           false,
-			Whitelist:                              []string{},
+			IsIdpAgent:                             nodeDetailV8.IsIdpAgent,
+			UseWhitelist:                           nodeDetailV8.UseWhitelist,
+			Whitelist:                              nodeDetailV8.Whitelist,
 			SupportedFeatureList:                   supportedFeatureListV9,
 		}
 
