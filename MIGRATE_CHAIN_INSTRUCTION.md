@@ -61,7 +61,7 @@
 
    TM_HOME=/home/support/ndid/ndid/tendermint/ \
    ABCI_DB_DIR_PATH=/home/support/ndid/ndid/data/ndid/abci/ \
-   go run main.go create-initial-state-data 6 7
+   go run main.go create-initial-state-data 8 9
    ```
 
    or run with C lib support for LevelDB (in case DB to backup uses cleveldb):
@@ -69,7 +69,7 @@
    ```sh
    TM_HOME=/home/support/ndid/ndid/tendermint/ \
    ABCI_DB_DIR_PATH=/home/support/ndid/ndid/data/ndid/abci/ \
-   CGO_ENABLED=1 CGO_LDFLAGS="-lsnappy" go run -tags "cleveldb" main.go create-initial-state-data 6 7
+   CGO_ENABLED=1 CGO_LDFLAGS="-lsnappy" go run -tags "cleveldb" main.go create-initial-state-data 8 9
    ```
 
    - `TM_HOME` คือ Home directory ของ Tendermint
