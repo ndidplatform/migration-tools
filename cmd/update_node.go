@@ -30,6 +30,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	v10 "github.com/ndidplatform/migration-tools/did/v10"
 	v7 "github.com/ndidplatform/migration-tools/did/v7"
 	v9 "github.com/ndidplatform/migration-tools/did/v9"
 )
@@ -67,6 +68,19 @@ func updateNode(version string) (err error) {
 		)
 	case "9":
 		err = v9.SetNodeKeys(
+			ndidID,
+			nodeSigningMasterPublicKeyFilepath,
+			nodeSigningMasterAlgorithm,
+			nodeSigningPublicKeyFilepath,
+			nodeSigningAlgorithm,
+			nodeEncryptionPublicKeyFilepath,
+			nodeEncryptionAlgorithm,
+			keyDir,
+			tendermintRPCHost,
+			tendermintRPCPort,
+		)
+	case "10":
+		err = v10.SetNodeKeys(
 			ndidID,
 			nodeSigningMasterPublicKeyFilepath,
 			nodeSigningMasterAlgorithm,
