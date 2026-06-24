@@ -43,6 +43,11 @@ import (
 
 const tmpDirectoryName = "ndid_migrate"
 
+const (
+	initialStateDataTypeFile      = "file"
+	initialStateDataTypeGoLevelDB = "goleveldb"
+)
+
 type ABCIDataVersion struct {
 	ABCIStateVersion string
 	ABCIAppVersions  []string
@@ -119,6 +124,14 @@ func createInitialStateData(fromVersion string, toVersion string) (err error) {
 	initialStateDataDirectoryPath = path.Join(initialStateDataDirectoryPath, instanceDirName)
 	utils.CreateDirIfNotExist(initialStateDataDirectoryPath)
 
+	initialStateDataType := viper.GetString("INITIAL_STATE_DATA_TYPE")
+	switch initialStateDataType {
+	case initialStateDataTypeFile:
+	case initialStateDataTypeGoLevelDB:
+	default:
+		return errors.New("unsupported initial state data type")
+	}
+
 	initialStateDataFilename := viper.GetString("INITIAL_STATE_DATA_FILENAME")
 	// backupValidatorsFilename := viper.GetString("BACKUP_VALIDATORS_FILENAME")
 	chainHistoryFilename := viper.GetString("CHAIN_HISTORY_FILENAME")
@@ -130,6 +143,7 @@ func createInitialStateData(fromVersion string, toVersion string) (err error) {
 			stateDBDataVersions[stateDBDataFromVersionIndex].ABCIStateVersion,
 			instanceDirName,
 			initialStateDataDirectoryPath,
+			initialStateDataType,
 			chainHistoryFilename,
 			initialStateDataFilename,
 			initialStateMetadataFilename,
@@ -145,6 +159,7 @@ func createInitialStateData(fromVersion string, toVersion string) (err error) {
 				stateDBDataToVersionIndex,
 				instanceDirName,
 				initialStateDataDirectoryPath,
+				initialStateDataType,
 				chainHistoryFilename,
 				initialStateDataFilename,
 				initialStateMetadataFilename,
@@ -171,6 +186,7 @@ func createInitStateDataSameVersion(
 	stateVersion string,
 	instanceDirName string,
 	initialStateDataDirectoryPath string,
+	initialStateDataType string,
 	chainHistoryFilename string,
 	initialStateDataFilename string,
 	initialStateMetadataFilename string,
@@ -184,116 +200,8 @@ func createInitStateDataSameVersion(
 	var saveNewChainHistory func(chainHistory []byte) (err error)
 	var saveKeyValue func(key []byte, value []byte) (err error)
 
-	// Write to file
-	log.Println("write to file")
-
-	saveNewChainHistory = func(chainHistory []byte) (err error) {
-		err = utils.AppendLineToFile(
-			path.Join(initialStateDataDirectoryPath, chainHistoryFilename),
-			chainHistory,
-		)
-		if err != nil {
-			return err
-		}
-		// initialStateKeyCount++
-		// if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
-		// 	log.Println("keys written:", initialStateKeyCount)
-		// }
-		log.Println("chain history written")
-		return nil
-	}
-
-	initialStateDataFile, err := utils.OpenFileForAppend(path.Join(initialStateDataDirectoryPath, initialStateDataFilename))
-	if err != nil {
-		return err
-	}
-	defer initialStateDataFile.Close()
-
-	saveKeyValue = func(key, value []byte) (err error) {
-		var kv KeyValue
-		kv.Key = key
-		kv.Value = value
-		jsonStr, err := json.Marshal(kv)
-		if err != nil {
-			return err
-		}
-		err = utils.AppendLineToOpenedFile(
-			initialStateDataFile,
-			jsonStr,
-		)
-		if err != nil {
-			return err
-		}
-		initialStateKeyCount++
-		if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
-			log.Println("keys written:", initialStateKeyCount)
-		}
-		return nil
-	}
-
-	switch stateVersion {
-	case "7":
-		err = convert.ReadInputStateDBDataV7AndBackup(saveNewChainHistory, saveKeyValue)
-	default:
-		err = errors.New("not supported")
-	}
-	if err != nil {
-		return err
-	}
-
-	// write metadata file
-	var metadata Metadata
-	metadata.TotalKeyCount = initialStateKeyCount
-	metadataJson, err := json.Marshal(metadata)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(path.Join(initialStateDataDirectoryPath, initialStateMetadataFilename), metadataJson, 0644)
-	if err != nil {
-		return err
-	}
-
-	log.Println("total initial state key count:", initialStateKeyCount)
-
-	return nil
-}
-
-func loopConvert(
-	i int,
-	stateDBDataFromVersionIndex int,
-	stateDBDataToVersionIndex int,
-	instanceDirName string,
-	initialStateDataDirectoryPath string,
-	chainHistoryFilename string,
-	initialStateDataFilename string,
-	initialStateMetadataFilename string,
-) (err error) {
-	log.Println("converting version:", stateDBDataVersions[i], "to version:", stateDBDataVersions[i+1])
-
-	var tempInputDb *leveldb.DB
-	var dbGet func(key []byte) (value []byte, err error)
-	if i != stateDBDataFromVersionIndex {
-		log.Println("read from temp DB")
-
-		tempInputDb, err = leveldb.OpenFile(path.Join(os.TempDir(), tmpDirectoryName, instanceDirName, "db_version_"+stateDBDataVersions[i].ABCIStateVersion), nil) // TODO: random string prefix on each run (prevent overwrite)
-		if err != nil {
-			return err
-		}
-		defer tempInputDb.Close()
-
-		dbGet = func(key []byte) (value []byte, err error) {
-			return tempInputDb.Get(key, nil)
-		}
-	} else {
-		log.Println("read from input DB")
-	}
-
-	var initialStateKeyCount int64 = 0
-
-	var saveNewChainHistory func(chainHistory []byte) (err error)
-	var saveKeyValue func(key []byte, value []byte) (err error)
-
-	if stateDBDataToVersionIndex-i == 1 {
+	switch initialStateDataType {
+	case initialStateDataTypeFile:
 		// Write to file
 		log.Println("write to file")
 
@@ -340,6 +248,240 @@ func loopConvert(
 			}
 			return nil
 		}
+	case initialStateDataTypeGoLevelDB:
+		// Write to DB (goleveldb)
+		log.Println("write to DB (goleveldb)")
+
+		outputDb, err := leveldb.OpenFile(
+			path.Join(initialStateDataDirectoryPath, initialStateDataFilename),
+			nil,
+		)
+		if err != nil {
+			return err
+		}
+		defer outputDb.Close()
+
+		saveNewChainHistory = func(chainHistory []byte) (err error) {
+			// err = outputDb.Put(
+			// 	[]byte("METADATA:ChainHistoryInfo"),
+			// 	chainHistory,
+			// 	&opt.WriteOptions{
+			// 		// Sync: true,
+			// 	},
+			// )
+			// if err != nil {
+			// 	return err
+			// }
+
+			// write to file
+			err = utils.AppendLineToFile(
+				path.Join(initialStateDataDirectoryPath, chainHistoryFilename),
+				chainHistory,
+			)
+			if err != nil {
+				return err
+			}
+
+			// initialStateKeyCount++
+			// if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
+			// 	log.Println("keys written:", initialStateKeyCount)
+			// }
+			log.Println("chain history written")
+			return nil
+		}
+
+		saveKeyValue = func(key, value []byte) (err error) {
+			err = outputDb.Put(
+				key,
+				value,
+				&opt.WriteOptions{
+					// Sync: true,
+				},
+			)
+			if err != nil {
+				return err
+			}
+			initialStateKeyCount++
+			if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
+				log.Println("keys written:", initialStateKeyCount)
+			}
+			return nil
+		}
+	}
+
+	switch stateVersion {
+	case "7":
+		err = convert.ReadInputStateDBDataV7AndBackup(saveNewChainHistory, saveKeyValue)
+	default:
+		err = errors.New("not supported")
+	}
+	if err != nil {
+		return err
+	}
+
+	// write metadata file
+	var metadata Metadata
+	metadata.TotalKeyCount = initialStateKeyCount
+	metadataJson, err := json.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(path.Join(initialStateDataDirectoryPath, initialStateMetadataFilename), metadataJson, 0644)
+	if err != nil {
+		return err
+	}
+
+	log.Println("total initial state key count:", initialStateKeyCount)
+
+	return nil
+}
+
+func loopConvert(
+	i int,
+	stateDBDataFromVersionIndex int,
+	stateDBDataToVersionIndex int,
+	instanceDirName string,
+	initialStateDataDirectoryPath string,
+	initialStateDataType string,
+	chainHistoryFilename string,
+	initialStateDataFilename string,
+	initialStateMetadataFilename string,
+) (err error) {
+	log.Println("converting version:", stateDBDataVersions[i], "to version:", stateDBDataVersions[i+1])
+
+	var tempInputDb *leveldb.DB
+	var dbGet func(key []byte) (value []byte, err error)
+	if i != stateDBDataFromVersionIndex {
+		log.Println("read from temp DB")
+
+		tempInputDb, err = leveldb.OpenFile(path.Join(os.TempDir(), tmpDirectoryName, instanceDirName, "db_version_"+stateDBDataVersions[i].ABCIStateVersion), nil) // TODO: random string prefix on each run (prevent overwrite)
+		if err != nil {
+			return err
+		}
+		defer tempInputDb.Close()
+
+		dbGet = func(key []byte) (value []byte, err error) {
+			return tempInputDb.Get(key, nil)
+		}
+	} else {
+		log.Println("read from input DB")
+	}
+
+	var initialStateKeyCount int64 = 0
+
+	var saveNewChainHistory func(chainHistory []byte) (err error)
+	var saveKeyValue func(key []byte, value []byte) (err error)
+
+	if stateDBDataToVersionIndex-i == 1 {
+		switch initialStateDataType {
+		case initialStateDataTypeFile:
+			// Write to file
+			log.Println("write to file")
+
+			saveNewChainHistory = func(chainHistory []byte) (err error) {
+				err = utils.AppendLineToFile(
+					path.Join(initialStateDataDirectoryPath, chainHistoryFilename),
+					chainHistory,
+				)
+				if err != nil {
+					return err
+				}
+				// initialStateKeyCount++
+				// if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
+				// 	log.Println("keys written:", initialStateKeyCount)
+				// }
+				log.Println("chain history written")
+				return nil
+			}
+
+			initialStateDataFile, err := utils.OpenFileForAppend(path.Join(initialStateDataDirectoryPath, initialStateDataFilename))
+			if err != nil {
+				return err
+			}
+			defer initialStateDataFile.Close()
+
+			saveKeyValue = func(key, value []byte) (err error) {
+				var kv KeyValue
+				kv.Key = key
+				kv.Value = value
+				jsonStr, err := json.Marshal(kv)
+				if err != nil {
+					return err
+				}
+				err = utils.AppendLineToOpenedFile(
+					initialStateDataFile,
+					jsonStr,
+				)
+				if err != nil {
+					return err
+				}
+				initialStateKeyCount++
+				if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
+					log.Println("keys written:", initialStateKeyCount)
+				}
+				return nil
+			}
+		case initialStateDataTypeGoLevelDB:
+			// Write to DB (goleveldb)
+			log.Println("write to DB (goleveldb)")
+
+			outputDb, err := leveldb.OpenFile(
+				path.Join(initialStateDataDirectoryPath, initialStateDataFilename),
+				nil,
+			)
+			if err != nil {
+				return err
+			}
+			defer outputDb.Close()
+
+			saveNewChainHistory = func(chainHistory []byte) (err error) {
+				// err = outputDb.Put(
+				// 	[]byte("METADATA:ChainHistoryInfo"),
+				// 	chainHistory,
+				// 	&opt.WriteOptions{
+				// 		// Sync: true,
+				// 	},
+				// )
+				// if err != nil {
+				// 	return err
+				// }
+
+				// write to file
+				err = utils.AppendLineToFile(
+					path.Join(initialStateDataDirectoryPath, chainHistoryFilename),
+					chainHistory,
+				)
+				if err != nil {
+					return err
+				}
+
+				// initialStateKeyCount++
+				// if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
+				// 	log.Println("keys written:", initialStateKeyCount)
+				// }
+				log.Println("chain history written")
+				return nil
+			}
+
+			saveKeyValue = func(key, value []byte) (err error) {
+				err = outputDb.Put(
+					key,
+					value,
+					&opt.WriteOptions{
+						// Sync: true,
+					},
+				)
+				if err != nil {
+					return err
+				}
+				initialStateKeyCount++
+				if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
+					log.Println("keys written:", initialStateKeyCount)
+				}
+				return nil
+			}
+		}
+
 	} else {
 		// Write to Temp DB
 		log.Println("write to temp DB")
@@ -622,6 +764,7 @@ var createInitialStateDataCmd = &cobra.Command{
 		viper.SetDefault("LOG_KEYS_WRITTEN", false)
 		viper.SetDefault("LOG_KEYS_WRITTEN_EVERY", 100000)
 		viper.SetDefault("INITIAL_STATE_DATA_DIR", "./_initial_state_data/")
+		viper.SetDefault("INITIAL_STATE_DATA_TYPE", "goleveldb") // "goleveldb", "file"
 		viper.SetDefault("INITIAL_STATE_DATA_FILENAME", "data")
 		viper.SetDefault("BACKUP_VALIDATORS_FILENAME", "validators")
 		viper.SetDefault("CHAIN_HISTORY_FILENAME", "chain_history")
