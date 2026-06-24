@@ -20,6 +20,7 @@ CGO_ENABLED=1 CGO_LDFLAGS="-lsnappy" go run -tags "cleveldb" main.go
 **Environment variable options**
 
 - `INITIAL_STATE_DATA_DIR` : Directory path of initial state data
+- `INITIAL_STATE_DATA_TYPE` : ABCI initial state data file type. Options are `goleveldb` and `file`. `goleveldb` will output as a database directory. `file` will output as a single file with JSON data format [Default: `goleveldb`]
 - `INITIAL_STATE_DATA_FILENAME` : File name of ABCI initial state data file [Default: `data`]
 - `BACKUP_VALIDATORS_FILENAME` : File name of validators backup data
 - `CHAIN_HISTORY_FILENAME` : File name of chain history data [Default: `chain_history`]
