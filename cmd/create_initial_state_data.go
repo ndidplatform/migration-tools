@@ -81,10 +81,13 @@ type Metadata struct {
 }
 
 var (
-	// TODO: ignore this key in saveKeyValue func
 	initialStateHashKey = []byte("INITIAL_STATE_HASH")
 
 	actionSet = []byte("SET")
+)
+
+var (
+	goleveldbMaxBatchBytes = opt.DefaultWriteBuffer / 2 // 2MB
 )
 
 func contains(a string, list []string) bool {
@@ -210,6 +213,7 @@ func createInitStateDataSameVersion(
 	var saveNewChainHistory func(chainHistory []byte) (err error)
 	var saveKeyValue func(key []byte, value []byte) (err error)
 	var saveKeyValueNoStats func(key []byte, value []byte) (err error)
+	var finalizeSaves func() (err error)
 
 	hashDigest := sha256.New()
 
@@ -277,6 +281,8 @@ func createInitStateDataSameVersion(
 			return nil
 		}
 
+		finalizeSaves = func() (err error) { return nil }
+
 	case initialStateDataTypeGoLevelDB:
 		// Write to DB (goleveldb)
 		log.Println("write to DB (goleveldb)")
@@ -299,6 +305,9 @@ func createInitStateDataSameVersion(
 				log.Fatalf("failed to force fsync via batch: %v", err)
 			}
 		}()
+
+		batch := new(leveldb.Batch)
+		batchBytes := 0
 
 		saveNewChainHistory = func(chainHistory []byte) (err error) {
 			// err = outputDb.Put(
@@ -330,16 +339,22 @@ func createInitStateDataSameVersion(
 		}
 
 		saveKeyValueNoStats = func(key, value []byte) (err error) {
-			err = outputDb.Put(
-				key,
-				value,
-				&opt.WriteOptions{
+			// Approximate memory footprint of this entry
+			recordSize := len(key) + len(value)
+
+			if batchBytes+recordSize > goleveldbMaxBatchBytes && batch.Len() > 0 {
+				err = outputDb.Write(batch, &opt.WriteOptions{
 					// Sync: true,
-				},
-			)
-			if err != nil {
-				return err
+				})
+				if err != nil {
+					return err
+				}
+				batch.Reset()
+				batchBytes = 0
 			}
+
+			batch.Put(key, value)
+			batchBytes += recordSize
 
 			return nil
 		}
@@ -361,6 +376,16 @@ func createInitStateDataSameVersion(
 
 			return nil
 		}
+
+		finalizeSaves = func() (err error) {
+			// Flush any remaining items
+			if batch.Len() > 0 {
+				return outputDb.Write(batch, &opt.WriteOptions{
+					// Sync: true,
+				})
+			}
+			return nil
+		}
 	}
 
 	switch stateVersion {
@@ -380,6 +405,11 @@ func createInitStateDataSameVersion(
 	}
 
 	log.Printf("initial state hash: %x\n", hash)
+
+	err = finalizeSaves()
+	if err != nil {
+		return err
+	}
 
 	// write metadata file
 	var metadata Metadata
@@ -436,6 +466,7 @@ func loopConvert(
 	var saveNewChainHistory func(chainHistory []byte) (err error)
 	var saveKeyValue func(key []byte, value []byte) (err error)
 	var saveKeyValueNoStats func(key []byte, value []byte) (err error)
+	var finalizeSaves func() (err error)
 
 	hashDigest := sha256.New()
 
@@ -503,6 +534,9 @@ func loopConvert(
 
 				return nil
 			}
+
+			finalizeSaves = func() (err error) { return nil }
+
 		case initialStateDataTypeGoLevelDB:
 			// Write to DB (goleveldb)
 			log.Println("write to DB (goleveldb)")
@@ -525,6 +559,9 @@ func loopConvert(
 					log.Fatalf("failed to force fsync via batch: %v", err)
 				}
 			}()
+
+			batch := new(leveldb.Batch)
+			batchBytes := 0
 
 			saveNewChainHistory = func(chainHistory []byte) (err error) {
 				// err = outputDb.Put(
@@ -556,16 +593,22 @@ func loopConvert(
 			}
 
 			saveKeyValueNoStats = func(key, value []byte) (err error) {
-				err = outputDb.Put(
-					key,
-					value,
-					&opt.WriteOptions{
+				// Approximate memory footprint of this entry
+				recordSize := len(key) + len(value)
+
+				if batchBytes+recordSize > goleveldbMaxBatchBytes && batch.Len() > 0 {
+					err = outputDb.Write(batch, &opt.WriteOptions{
 						// Sync: true,
-					},
-				)
-				if err != nil {
-					return err
+					})
+					if err != nil {
+						return err
+					}
+					batch.Reset()
+					batchBytes = 0
 				}
+
+				batch.Put(key, value)
+				batchBytes += recordSize
 
 				return nil
 			}
@@ -585,6 +628,16 @@ func loopConvert(
 					log.Println("keys written:", initialStateKeyCount)
 				}
 
+				return nil
+			}
+
+			finalizeSaves = func() (err error) {
+				// Flush any remaining items
+				if batch.Len() > 0 {
+					return outputDb.Write(batch, &opt.WriteOptions{
+						// Sync: true,
+					})
+				}
 				return nil
 			}
 		}
@@ -634,6 +687,7 @@ func loopConvert(
 			}
 			return nil
 		}
+		finalizeSaves = func() (err error) { return nil }
 	}
 
 	switch stateDBDataVersions[i].ABCIStateVersion {
@@ -849,6 +903,11 @@ func loopConvert(
 		metadata.InitialStateHash = hash
 
 		log.Printf("initial state hash: %x\n", hash)
+	}
+
+	err = finalizeSaves()
+	if err != nil {
+		return err
 	}
 
 	metadata.TotalKeyCount = initialStateKeyCount
