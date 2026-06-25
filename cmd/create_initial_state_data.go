@@ -263,11 +263,11 @@ func createInitStateDataSameVersion(
 
 		// force fsync
 		defer func() {
-			err := outputDb.Delete([]byte(""), &opt.WriteOptions{
-				Sync: true,
-			})
+			batch := &leveldb.Batch{}
+
+			err = outputDb.Write(batch, &opt.WriteOptions{Sync: true})
 			if err != nil {
-				log.Printf("failed to force fsync, err: %+v\n", err)
+				log.Fatalf("failed to force fsync via batch: %v", err)
 			}
 		}()
 
@@ -446,11 +446,11 @@ func loopConvert(
 
 			// force fsync
 			defer func() {
-				err := outputDb.Delete([]byte(""), &opt.WriteOptions{
-					Sync: true,
-				})
+				batch := &leveldb.Batch{}
+
+				err = outputDb.Write(batch, &opt.WriteOptions{Sync: true})
 				if err != nil {
-					log.Printf("failed to force fsync, err: %+v\n", err)
+					log.Fatalf("failed to force fsync via batch: %v", err)
 				}
 			}()
 
