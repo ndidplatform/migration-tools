@@ -117,6 +117,7 @@ func ConvertInputStateDBDataV9ToV10AndBackup(
 	if err != nil {
 		return err
 	}
+	defer itr.Close()
 	for ; itr.Valid(); itr.Next() {
 		key := itr.Key()
 		value := itr.Value()

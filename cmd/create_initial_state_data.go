@@ -23,6 +23,7 @@
 package cmd
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"log"
@@ -74,8 +75,17 @@ type KeyValue struct {
 }
 
 type Metadata struct {
-	TotalKeyCount int64 `json:"total_key_count"`
+	TotalKeyCount    int64  `json:"total_key_count"`
+	DataType         string `json:"data_type"`
+	InitialStateHash []byte `json:"initial_state_hash"`
 }
+
+var (
+	// TODO: ignore this key in saveKeyValue func
+	initialStateHashKey = []byte("INITIAL_STATE_HASH")
+
+	actionSet = []byte("SET")
+)
 
 func contains(a string, list []string) bool {
 	for _, b := range list {
@@ -199,6 +209,9 @@ func createInitStateDataSameVersion(
 
 	var saveNewChainHistory func(chainHistory []byte) (err error)
 	var saveKeyValue func(key []byte, value []byte) (err error)
+	var saveKeyValueNoStats func(key []byte, value []byte) (err error)
+
+	hashDigest := sha256.New()
 
 	switch initialStateDataType {
 	case initialStateDataTypeFile:
@@ -227,7 +240,7 @@ func createInitStateDataSameVersion(
 		}
 		defer initialStateDataFile.Close()
 
-		saveKeyValue = func(key, value []byte) (err error) {
+		saveKeyValueNoStats = func(key, value []byte) (err error) {
 			var kv KeyValue
 			kv.Key = key
 			kv.Value = value
@@ -242,18 +255,34 @@ func createInitStateDataSameVersion(
 			if err != nil {
 				return err
 			}
+
+			return nil
+		}
+
+		saveKeyValue = func(key, value []byte) (err error) {
+			hashDigest.Write(key)
+			hashDigest.Write(actionSet)
+			hashDigest.Write(value)
+
+			err = saveKeyValueNoStats(key, value)
+			if err != nil {
+				return err
+			}
+
 			initialStateKeyCount++
 			if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
 				log.Println("keys written:", initialStateKeyCount)
 			}
+
 			return nil
 		}
+
 	case initialStateDataTypeGoLevelDB:
 		// Write to DB (goleveldb)
 		log.Println("write to DB (goleveldb)")
 
 		outputDb, err := leveldb.OpenFile(
-			path.Join(initialStateDataDirectoryPath, initialStateDataFilename),
+			path.Join(initialStateDataDirectoryPath, initialStateDataFilename+".db"),
 			nil,
 		)
 		if err != nil {
@@ -300,7 +329,7 @@ func createInitStateDataSameVersion(
 			return nil
 		}
 
-		saveKeyValue = func(key, value []byte) (err error) {
+		saveKeyValueNoStats = func(key, value []byte) (err error) {
 			err = outputDb.Put(
 				key,
 				value,
@@ -311,10 +340,25 @@ func createInitStateDataSameVersion(
 			if err != nil {
 				return err
 			}
+
+			return nil
+		}
+
+		saveKeyValue = func(key, value []byte) (err error) {
+			hashDigest.Write(key)
+			hashDigest.Write(actionSet)
+			hashDigest.Write(value)
+
+			err = saveKeyValueNoStats(key, value)
+			if err != nil {
+				return err
+			}
+
 			initialStateKeyCount++
 			if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
 				log.Println("keys written:", initialStateKeyCount)
 			}
+
 			return nil
 		}
 	}
@@ -329,9 +373,19 @@ func createInitStateDataSameVersion(
 		return err
 	}
 
+	hash := hashDigest.Sum(nil)
+	err = saveKeyValueNoStats(initialStateHashKey, hash)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("initial state hash: %x\n", hash)
+
 	// write metadata file
 	var metadata Metadata
 	metadata.TotalKeyCount = initialStateKeyCount
+	metadata.DataType = initialStateDataType
+	metadata.InitialStateHash = hash
 	metadataJson, err := json.Marshal(metadata)
 	if err != nil {
 		return err
@@ -381,6 +435,9 @@ func loopConvert(
 
 	var saveNewChainHistory func(chainHistory []byte) (err error)
 	var saveKeyValue func(key []byte, value []byte) (err error)
+	var saveKeyValueNoStats func(key []byte, value []byte) (err error)
+
+	hashDigest := sha256.New()
 
 	if stateDBDataToVersionIndex-i == 1 {
 		switch initialStateDataType {
@@ -410,7 +467,7 @@ func loopConvert(
 			}
 			defer initialStateDataFile.Close()
 
-			saveKeyValue = func(key, value []byte) (err error) {
+			saveKeyValueNoStats = func(key, value []byte) (err error) {
 				var kv KeyValue
 				kv.Key = key
 				kv.Value = value
@@ -425,10 +482,25 @@ func loopConvert(
 				if err != nil {
 					return err
 				}
+
+				return nil
+			}
+
+			saveKeyValue = func(key, value []byte) (err error) {
+				hashDigest.Write(key)
+				hashDigest.Write(actionSet)
+				hashDigest.Write(value)
+
+				err = saveKeyValueNoStats(key, value)
+				if err != nil {
+					return err
+				}
+
 				initialStateKeyCount++
 				if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
 					log.Println("keys written:", initialStateKeyCount)
 				}
+
 				return nil
 			}
 		case initialStateDataTypeGoLevelDB:
@@ -436,7 +508,7 @@ func loopConvert(
 			log.Println("write to DB (goleveldb)")
 
 			outputDb, err := leveldb.OpenFile(
-				path.Join(initialStateDataDirectoryPath, initialStateDataFilename),
+				path.Join(initialStateDataDirectoryPath, initialStateDataFilename+".db"),
 				nil,
 			)
 			if err != nil {
@@ -483,7 +555,7 @@ func loopConvert(
 				return nil
 			}
 
-			saveKeyValue = func(key, value []byte) (err error) {
+			saveKeyValueNoStats = func(key, value []byte) (err error) {
 				err = outputDb.Put(
 					key,
 					value,
@@ -494,10 +566,25 @@ func loopConvert(
 				if err != nil {
 					return err
 				}
+
+				return nil
+			}
+
+			saveKeyValue = func(key, value []byte) (err error) {
+				hashDigest.Write(key)
+				hashDigest.Write(actionSet)
+				hashDigest.Write(value)
+
+				err = saveKeyValueNoStats(key, value)
+				if err != nil {
+					return err
+				}
+
 				initialStateKeyCount++
 				if logKeysWritten && initialStateKeyCount%logKeysWrittenEvery == 0 {
 					log.Println("keys written:", initialStateKeyCount)
 				}
+
 				return nil
 			}
 		}
@@ -751,7 +838,21 @@ func loopConvert(
 
 	// write metadata file
 	var metadata Metadata
+
+	if i == stateDBDataFromVersionIndex {
+		hash := hashDigest.Sum(nil)
+		err = saveKeyValueNoStats(initialStateHashKey, hash)
+		if err != nil {
+			return err
+		}
+
+		metadata.InitialStateHash = hash
+
+		log.Printf("initial state hash: %x\n", hash)
+	}
+
 	metadata.TotalKeyCount = initialStateKeyCount
+	metadata.DataType = initialStateDataType
 	metadataJson, err := json.Marshal(metadata)
 	if err != nil {
 		return err
