@@ -261,6 +261,16 @@ func createInitStateDataSameVersion(
 		}
 		defer outputDb.Close()
 
+		// force fsync
+		defer func() {
+			err := outputDb.Delete([]byte(""), &opt.WriteOptions{
+				Sync: true,
+			})
+			if err != nil {
+				log.Printf("failed to force fsync, err: %+v\n", err)
+			}
+		}()
+
 		saveNewChainHistory = func(chainHistory []byte) (err error) {
 			// err = outputDb.Put(
 			// 	[]byte("METADATA:ChainHistoryInfo"),
@@ -433,6 +443,16 @@ func loopConvert(
 				return err
 			}
 			defer outputDb.Close()
+
+			// force fsync
+			defer func() {
+				err := outputDb.Delete([]byte(""), &opt.WriteOptions{
+					Sync: true,
+				})
+				if err != nil {
+					log.Printf("failed to force fsync, err: %+v\n", err)
+				}
+			}()
 
 			saveNewChainHistory = func(chainHistory []byte) (err error) {
 				// err = outputDb.Put(
