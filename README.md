@@ -19,23 +19,26 @@ CGO_ENABLED=1 CGO_LDFLAGS="-lsnappy" go run -tags "cleveldb" main.go
 
 **Environment variable options**
 
-- `INITIAL_STATE_DATA_DIR` : Directory path of initial state data
-- `INITIAL_STATE_DATA_TYPE` : ABCI initial state data file type. Options are `goleveldb` and `file`. `goleveldb` will output as a database directory. `file` will output as a single file with JSON data format [Default: `goleveldb`]
-- `INITIAL_STATE_DATA_FILENAME` : File name of ABCI initial state data file [Default: `data`]
-- `BACKUP_VALIDATORS_FILENAME` : File name of validators backup data
-- `CHAIN_HISTORY_FILENAME` : File name of chain history data [Default: `chain_history`]
+- `INITIAL_STATE_DATA_DIR`: Directory path of initial state data
+- `INITIAL_STATE_DATA_FILENAME`: File name of ABCI initial state data file [Default: `data`]
+- `BACKUP_VALIDATORS_FILENAME`: File name of validators backup data
+- `CHAIN_HISTORY_FILENAME`: File name of chain history data [Default: `chain_history`]
 
 *Specific to `create-initial-state-data` command*
 
 - `TM_HOME`: Source Tendermint home directory path
-- `ABCI_DB_DIR_PATH` : Source ABCI state DB directory path
+- `ABCI_DB_DIR_PATH`: Source ABCI state DB directory path
+- `INITIAL_STATE_DATA_TYPE`: ABCI initial state data file type. Options are `goleveldb` and `file`. `goleveldb` will output as a database directory. `file` will output as a single file with JSON data format [Default: `goleveldb`]
+- `READ_BUFFER_SIZE`: Key-value read buffer size (number of keys) [Default: `100000`]
+- `GOLEVELDB_MAX_BATCH_BYTES`: Goleveldb write max batch size in bytes. (Only apply when `INITIAL_STATE_DATA_TYPE` is set to `goleveldb`) [Default: `33554432` (32 MB)]
+- `GOLEVELDB_WRITE_BUFFER_BYTES`: Goleveldb write buffer size in bytes. (Only apply when `INITIAL_STATE_DATA_TYPE` is set to `goleveldb`) [Default: `268435456` (256 MB)]
 
 *Specific to `restore` command*
 
-- `NDID_NODE_ID` : NDID node ID [Default: `NDID`]
+- `NDID_NODE_ID`: NDID node ID [Default: `NDID`]
 - `KEY_DIR`: NDID node key directory path [Default: `./dev_keys/`]
-- `TENDERMINT_RPC_HOST` : Tendermint RPC host [Default: `localhost`]
-- `TENDERMINT_RPC_PORT` : Tendermint RPC port [Default: `45000`]
+- `TENDERMINT_RPC_HOST`: Tendermint RPC host [Default: `localhost`]
+- `TENDERMINT_RPC_PORT`: Tendermint RPC port [Default: `45000`]
 
 ## Migrate Data to a New Chain
 

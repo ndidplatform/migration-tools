@@ -28,6 +28,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/spf13/viper"
 
@@ -85,6 +86,53 @@ var knownKeysV9 []string = []string{
 	"Validator",
 }
 
+var (
+	byteStateKey             = []byte("stateKey")
+	byteLastBlock            = []byte("lastBlock")
+	byteMasterNDID           = []byte("MasterNDID")
+	byteInitState            = []byte("InitState")
+	byteRequest              = []byte("Request")
+	byteVersions             = []byte("versions")
+	byteRequestType          = []byte("RequestType")
+	byteValidator            = []byte("Validator")
+	byteChainHistoryInfo     = []byte("ChainHistoryInfo")
+	byteAllService           = []byte("AllService")
+	byteN                    = []byte("n")
+	byteNodeID               = []byte("NodeID")
+	byteSignData             = []byte("SignData")
+	byteAccessorToRefCodeKey = []byte("accessorToRefCodeKey")
+	byteIdentityToRefCodeKey = []byte("identityToRefCodeKey")
+	bytePipe                 = []byte(v9.KeySeparator)
+	byteServiceSep           = append([]byte("Service"), v9.KeySeparator...)
+
+	byteV10RequestKeyPrefix = []byte(v10.RequestKeyPrefix)
+	byteV10KeySeparator     = []byte(v10.KeySeparator)
+	byteOne                 = []byte("1")
+)
+
+type KV struct {
+	Key   []byte
+	Value []byte
+}
+
+var kvPool = sync.Pool{
+	New: func() interface{} {
+		return &KV{
+			// Pre-allocate a reasonable capacity to avoid small resizes
+			Key:   make([]byte, 0, 128),
+			Value: make([]byte, 0, 2048),
+		}
+	},
+}
+
+var (
+	currentCacheID []byte
+	// Maps version string (e.g., "1") to the raw value bytes
+	versionCache = make(map[string][]byte)
+)
+
+var newReqVersionsValue []byte
+
 func ConvertInputStateDBDataV9ToV10AndBackup(
 	saveNewChainHistory func(chainHistory []byte) (err error),
 	saveKeyValue func(key []byte, value []byte) (err error),
@@ -109,23 +157,74 @@ func ConvertInputStateDBDataV9ToV10AndBackup(
 		return v9StateDB.Get(key)
 	}
 
+	// New Request version value (same for all requests)
+	var keyVersionsV10 didProtoV10.KeyVersions = didProtoV10.KeyVersions{
+		Versions: append(make([]int64, 0), 1),
+	}
+	newReqVersionsValue, err = proto.DeterministicMarshal(&keyVersionsV10)
+	if err != nil {
+		return err
+	}
+
+	//
+
 	var keyTypeStats map[string]int64 = make(map[string]int64)
 
 	var keysRead int64 = 0
 
-	itr, err := v9StateDB.Iterator(nil, nil)
-	if err != nil {
-		return err
-	}
-	defer itr.Close()
-	for ; itr.Valid(); itr.Next() {
-		key := itr.Key()
-		value := itr.Value()
+	readBufferSize := viper.GetInt("READ_BUFFER_SIZE")
 
+	log.Printf("read buffer size: %d\n", readBufferSize)
+
+	kvChan := make(chan *KV, readBufferSize)
+	errChan := make(chan error, 1)
+
+	go func() {
+		defer close(kvChan)
+
+		itr, err := v9StateDB.Iterator(nil, nil)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		defer itr.Close()
+		for ; itr.Valid(); itr.Next() {
+			kv := kvPool.Get().(*KV)
+
+			kv.Key = kv.Key[:0]
+			kv.Value = kv.Value[:0]
+
+			kv.Key = append(kv.Key, itr.Key()...)
+			kv.Value = append(kv.Value, itr.Value()...)
+
+			kvChan <- kv
+
+			// key := make([]byte, len(itr.Key()))
+			// copy(key, itr.Key())
+			// value := make([]byte, len(itr.Value()))
+			// copy(value, itr.Value())
+
+			// kvChan <- KV{Key: key, Value: value}
+
+			keysRead++
+		}
+	}()
+
+	// saveKeyValueWithCopy := func(key []byte, value []byte) (err error) {
+	// 	stableKey := make([]byte, len(key))
+	// 	copy(stableKey, key)
+
+	// 	stableValue := make([]byte, len(value))
+	// 	copy(stableValue, value)
+
+	// 	return saveKeyValue(stableKey, stableValue)
+	// }
+
+	for kv := range kvChan {
 		keyPrefix, err := ConvertStateDBDataV9ToV10(
-			key,
-			value,
-			string(ndidNodeID),
+			kv.Key,
+			kv.Value,
+			ndidNodeID,
 			currentChainData,
 			dbGet,
 			saveNewChainHistory,
@@ -134,11 +233,46 @@ func ConvertInputStateDBDataV9ToV10AndBackup(
 		if err != nil {
 			return err
 		}
-		keysRead++
+
+		kvPool.Put(kv)
+
 		if keyPrefix != "" {
 			keyTypeStats[keyPrefix]++
 		}
 	}
+
+	select {
+	case err := <-errChan:
+		return err
+	default:
+	}
+
+	// itr, err := v9StateDB.Iterator(nil, nil)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer itr.Close()
+	// for ; itr.Valid(); itr.Next() {
+	// 	key := itr.Key()
+	// 	value := itr.Value()
+
+	// 	keyPrefix, err := ConvertStateDBDataV9ToV10(
+	// 		key,
+	// 		value,
+	// 		string(ndidNodeID),
+	// 		currentChainData,
+	// 		dbGet,
+	// 		saveNewChainHistory,
+	// 		saveKeyValue,
+	// 	)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	keysRead++
+	// 	if keyPrefix != "" {
+	// 		keyTypeStats[keyPrefix]++
+	// 	}
+	// }
 
 	log.Println("total key read:", keysRead)
 	log.Println("key type stats:", keyTypeStats)
@@ -164,7 +298,7 @@ func ConvertInputStateDBDataV9ToV10AndBackup(
 func ConvertStateDBDataV9ToV10(
 	key []byte,
 	value []byte,
-	ndidNodeID string,
+	ndidNodeID []byte,
 	currentChainData *v9.ChainHistoryDetail,
 	dbGet func(key []byte) (value []byte, err error),
 	saveNewChainHistory func(chainHistory []byte) (err error),
@@ -175,37 +309,56 @@ func ConvertStateDBDataV9ToV10(
 		key = bytes.TrimPrefix(key, v9.KvPairPrefixKey)
 	}
 	switch {
-	case strings.HasPrefix(string(key), "stateKey"):
+	case bytes.HasPrefix(key, byteStateKey):
 		// ABCI state metadata
 		// Do not save
-	case strings.HasPrefix(string(key), "lastBlock"):
+	case bytes.HasPrefix(key, byteLastBlock):
 		// Last block
 		// Do not save
-	case ndidNodeID != "" && !strings.HasPrefix(string(key), "MasterNDID") && strings.Contains(string(key), string(ndidNodeID)):
+	case len(ndidNodeID) > 0 && !bytes.HasPrefix(key, byteMasterNDID) && bytes.Contains(key, ndidNodeID):
 		// NDID node detail
 		// Do not save
-	case strings.HasPrefix(string(key), "MasterNDID"):
+	case bytes.HasPrefix(key, byteMasterNDID):
 		// NDID
 		// Do not save
-	case strings.HasPrefix(string(key), "InitState"):
+	case bytes.HasPrefix(key, byteInitState):
 		// Init state
 		// Do not save
-	case strings.HasPrefix(string(key), "Request") && !strings.HasSuffix(string(key), "versions") &&
-		!strings.HasPrefix(string(key), "RequestType"):
+	case bytes.HasPrefix(key, byteRequest) && !bytes.HasSuffix(key, byteVersions) &&
+		!bytes.HasPrefix(key, byteRequestType):
 		// Request detail
 		// Do not save
-	case strings.HasPrefix(string(key), "Validator"):
+
+		// cache for use on (latest version) Request copy in case below
+		keyParts := bytes.Split(key, bytePipe)
+		if len(keyParts) >= 3 {
+			reqID := keyParts[1]
+			versionStr := string(keyParts[2])
+
+			// When moved to a new Request ID, clear the cache to free memory immediately
+			if !bytes.Equal(currentCacheID, reqID) {
+				// currentCacheID = append(currentCacheID[:0], reqID...) // Reuse underlying memory buffer
+				currentCacheID = make([]byte, len(reqID))
+				copy(currentCacheID, reqID)
+				clear(versionCache) // reset map
+			}
+
+			valCopy := make([]byte, len(value))
+			copy(valCopy, value)
+			versionCache[versionStr] = valCopy
+		}
+	case bytes.HasPrefix(key, byteValidator):
 		// Validator
 		// Do not save
 
-		// err = saveKeyValue(key, value)
+		// err = saveKeyValue(bytes.Clone(key), bytes.Clone(value))
 		// if err != nil {
 		// 	return err
 		// }
-	case strings.HasPrefix(string(key), "ChainHistoryInfo"):
+	case bytes.HasPrefix(key, byteChainHistoryInfo):
 		var chainHistory v9.ChainHistory
-		if string(value) != "" {
-			err := json.Unmarshal([]byte(value), &chainHistory)
+		if len(value) > 0 {
+			err := json.Unmarshal(value, &chainHistory)
 			if err != nil {
 				return "", err
 			}
@@ -224,7 +377,7 @@ func ConvertStateDBDataV9ToV10(
 		if err != nil {
 			return "", err
 		}
-	case strings.HasPrefix(string(key), "Service"+v9.KeySeparator):
+	case bytes.HasPrefix(key, byteServiceSep):
 		keyType = "Service"
 
 		// Changes:
@@ -232,7 +385,7 @@ func ConvertStateDBDataV9ToV10(
 		// - Add "RequesterNodeWhitelistEnabled"
 
 		var serviceDetailV9 didProtoV9.ServiceDetail
-		err := proto.Unmarshal([]byte(value), &serviceDetailV9)
+		err := proto.Unmarshal(value, &serviceDetailV9)
 		if err != nil {
 			return "", err
 		}
@@ -254,18 +407,18 @@ func ConvertStateDBDataV9ToV10(
 		if err != nil {
 			return "", err
 		}
-		err = saveKeyValue(key, serviceDetailV10Bytes)
+		err = saveKeyValue(bytes.Clone(key), serviceDetailV10Bytes)
 		if err != nil {
 			return "", err
 		}
-	case strings.HasPrefix(string(key), "AllService"):
+	case bytes.HasPrefix(key, byteAllService):
 		keyType = "AllService"
 
 		// Changes:
 		// - Add "Domain"
 
 		var serviceDetailListV9 didProtoV9.ServiceDetailList
-		err := proto.Unmarshal([]byte(value), &serviceDetailListV9)
+		err := proto.Unmarshal(value, &serviceDetailListV9)
 		if err != nil {
 			return "", err
 		}
@@ -273,83 +426,100 @@ func ConvertStateDBDataV9ToV10(
 		serviceDetailListV10 := didProtoV10.ServiceDetailList{
 			Services: make([]*didProtoV10.ServiceDetail, len(serviceDetailListV9.Services)),
 		}
-		for _, service := range serviceDetailListV9.Services {
-			serviceDetailListV10.Services = append(serviceDetailListV10.Services, &didProtoV10.ServiceDetail{
+		for i, service := range serviceDetailListV9.Services {
+			serviceDetailListV10.Services[i] = &didProtoV10.ServiceDetail{
 				ServiceId:   service.ServiceId,
 				ServiceName: service.ServiceName,
 				Active:      service.Active,
 				Domain:      "",
-			})
+			}
 		}
 
 		serviceDetailListV10Bytes, err := proto.DeterministicMarshal(&serviceDetailListV10)
 		if err != nil {
 			return "", err
 		}
-		err = saveKeyValue(key, serviceDetailListV10Bytes)
+		err = saveKeyValue(bytes.Clone(key), serviceDetailListV10Bytes)
 		if err != nil {
 			return "", err
 		}
-	case strings.HasPrefix(string(key), "Request") && strings.HasSuffix(string(key), "versions"):
+	case bytes.HasPrefix(key, byteRequest) && bytes.HasSuffix(key, byteVersions):
 		keyType = "Request"
 		// Versions of request
 		var keyVersionsV9 didProtoV9.KeyVersions
-		err := proto.Unmarshal([]byte(value), &keyVersionsV9)
+		err := proto.Unmarshal(value, &keyVersionsV9)
 		if err != nil {
 			return "", err
 		}
-		latestVersion := strconv.FormatInt(keyVersionsV9.Versions[len(keyVersionsV9.Versions)-1], 10)
-		keyParts := strings.Split(string(key), "|")
+		latestVersionStr := strconv.FormatInt(keyVersionsV9.Versions[len(keyVersionsV9.Versions)-1], 10)
+		keyParts := bytes.Split(key, bytePipe)
 		requestID := keyParts[1]
 
 		// Get last version of request detail
-		requestV9Key := "Request" + "|" + requestID + "|" + latestVersion
-		requestV9Value, err := dbGet([]byte(requestV9Key))
-		if err != nil {
-			return "", err
+		var requestV9Value []byte
+		var found bool
+
+		// Check rolling memory cache first
+		if bytes.Equal(currentCacheID, requestID) {
+			requestV9Value, found = versionCache[latestVersionStr]
+		}
+
+		// Fallback if not found in cache
+		if !found {
+			v9KeyLen := len(byteRequest) + len(bytePipe) + len(requestID) + len(bytePipe) + len(latestVersionStr)
+			requestV9Key := make([]byte, 0, v9KeyLen)
+			requestV9Key = append(requestV9Key, byteRequest...)
+			requestV9Key = append(requestV9Key, bytePipe...)
+			requestV9Key = append(requestV9Key, requestID...)
+			requestV9Key = append(requestV9Key, bytePipe...)
+			requestV9Key = append(requestV9Key, latestVersionStr...)
+
+			requestV9Value, err = dbGet(requestV9Key)
+			if err != nil {
+				return "", err
+			}
 		}
 
 		// var requestV9 didProtoV9.Request
-		// if err := proto.Unmarshal([]byte(requestV9Value), &requestV9); err != nil {
+		// if err := proto.Unmarshal(requestV9Value, &requestV9); err != nil {
 		// 	return "", err
 		// }
 
 		// Set to 1 version
-		var keyVersionsV10 didProtoV10.KeyVersions = didProtoV10.KeyVersions{
-			Versions: append(make([]int64, 0), 1),
-		}
-		newReqVersionsValue, err := proto.DeterministicMarshal(&keyVersionsV10)
-		if err != nil {
-			return "", err
-		}
-		newReqDetailKey := v10.RequestKeyPrefix + v10.KeySeparator + requestID + v10.KeySeparator + "1"
+		v10KeyLen := len(byteV10RequestKeyPrefix) + len(byteV10KeySeparator) + len(requestID) + len(byteV10KeySeparator) + len(byteOne)
+		newReqDetailKey := make([]byte, 0, v10KeyLen)
+		newReqDetailKey = append(newReqDetailKey, byteV10RequestKeyPrefix...)
+		newReqDetailKey = append(newReqDetailKey, byteV10KeySeparator...)
+		newReqDetailKey = append(newReqDetailKey, requestID...)
+		newReqDetailKey = append(newReqDetailKey, byteV10KeySeparator...)
+		newReqDetailKey = append(newReqDetailKey, byteOne...)
 		// Write request detail and Version of request detail
-		err = saveKeyValue([]byte(newReqDetailKey), requestV9Value)
+		err = saveKeyValue(newReqDetailKey, requestV9Value)
 		if err != nil {
 			return "", err
 		}
-		err = saveKeyValue(key, newReqVersionsValue)
+		err = saveKeyValue(bytes.Clone(key), newReqVersionsValue)
 		if err != nil {
 			return "", err
 		}
-	case strings.HasPrefix(string(key), "n") && len(value) == 0:
+	case bytes.HasPrefix(key, byteN) && len(value) == 0:
 		// nonce
 		// Do not save
 	default:
 		switch {
-		case strings.HasPrefix(string(key), "NodeID"):
+		case bytes.HasPrefix(key, byteNodeID):
 			keyType = "NodeID"
 		// case strings.HasPrefix(string(key), "RefGroupCode"):
 		// 	keyType = "RefGroupCode"
-		case strings.HasPrefix(string(key), "SignData"):
+		case bytes.HasPrefix(key, byteSignData):
 			keyType = "SignData"
-		case strings.HasPrefix(string(key), "accessorToRefCodeKey"):
+		case bytes.HasPrefix(key, byteAccessorToRefCodeKey):
 			keyType = "accessorToRefCodeKey"
-		case strings.HasPrefix(string(key), "identityToRefCodeKey"):
+		case bytes.HasPrefix(key, byteIdentityToRefCodeKey):
 			keyType = "identityToRefCodeKey"
 		}
 
-		err := saveKeyValue(key, value)
+		err := saveKeyValue(bytes.Clone(key), bytes.Clone(value))
 		if err != nil {
 			return "", err
 		}

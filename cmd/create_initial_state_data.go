@@ -87,7 +87,11 @@ var (
 )
 
 var (
-	goleveldbMaxBatchBytes = opt.DefaultWriteBuffer / 2 // 2MB
+	DefaultGoleveldbWriteBufferBytes = 256 * opt.MiB
+	DefaultGoleveldbMaxBatchBytes    = 32 * opt.MiB
+
+	goleveldbWriteBufferBytes = DefaultGoleveldbWriteBufferBytes
+	goleveldbMaxBatchBytes    = DefaultGoleveldbMaxBatchBytes
 )
 
 func contains(a string, list []string) bool {
@@ -141,6 +145,11 @@ func createInitialStateData(fromVersion string, toVersion string) (err error) {
 	switch initialStateDataType {
 	case initialStateDataTypeFile:
 	case initialStateDataTypeGoLevelDB:
+		goleveldbWriteBufferBytes = viper.GetInt("GOLEVELDB_WRITE_BUFFER_BYTES")
+		goleveldbMaxBatchBytes = viper.GetInt("GOLEVELDB_MAX_BATCH_BYTES")
+
+		log.Printf("goleveldb write buffer size: %d bytes\n", goleveldbWriteBufferBytes)
+		log.Printf("goleveldb max batch size: %d bytes\n", goleveldbMaxBatchBytes)
 	default:
 		return errors.New("unsupported initial state data type")
 	}
@@ -289,7 +298,9 @@ func createInitStateDataSameVersion(
 
 		outputDb, err := leveldb.OpenFile(
 			path.Join(initialStateDataDirectoryPath, initialStateDataFilename+".db"),
-			nil,
+			&opt.Options{
+				WriteBuffer: goleveldbWriteBufferBytes,
+			},
 		)
 		if err != nil {
 			return err
@@ -310,17 +321,6 @@ func createInitStateDataSameVersion(
 		batchBytes := 0
 
 		saveNewChainHistory = func(chainHistory []byte) (err error) {
-			// err = outputDb.Put(
-			// 	[]byte("METADATA:ChainHistoryInfo"),
-			// 	chainHistory,
-			// 	&opt.WriteOptions{
-			// 		// Sync: true,
-			// 	},
-			// )
-			// if err != nil {
-			// 	return err
-			// }
-
 			// write to file
 			err = utils.AppendLineToFile(
 				path.Join(initialStateDataDirectoryPath, chainHistoryFilename),
@@ -448,7 +448,10 @@ func loopConvert(
 	if i != stateDBDataFromVersionIndex {
 		log.Println("read from temp DB")
 
-		tempInputDb, err = leveldb.OpenFile(path.Join(os.TempDir(), tmpDirectoryName, instanceDirName, "db_version_"+stateDBDataVersions[i].ABCIStateVersion), nil) // TODO: random string prefix on each run (prevent overwrite)
+		tempInputDb, err = leveldb.OpenFile(
+			path.Join(os.TempDir(), tmpDirectoryName, instanceDirName, "db_version_"+stateDBDataVersions[i].ABCIStateVersion),
+			nil,
+		) // TODO: random string prefix on each run (prevent overwrite)
 		if err != nil {
 			return err
 		}
@@ -543,7 +546,9 @@ func loopConvert(
 
 			outputDb, err := leveldb.OpenFile(
 				path.Join(initialStateDataDirectoryPath, initialStateDataFilename+".db"),
-				nil,
+				&opt.Options{
+					WriteBuffer: goleveldbWriteBufferBytes,
+				},
 			)
 			if err != nil {
 				return err
@@ -564,17 +569,6 @@ func loopConvert(
 			batchBytes := 0
 
 			saveNewChainHistory = func(chainHistory []byte) (err error) {
-				// err = outputDb.Put(
-				// 	[]byte("METADATA:ChainHistoryInfo"),
-				// 	chainHistory,
-				// 	&opt.WriteOptions{
-				// 		// Sync: true,
-				// 	},
-				// )
-				// if err != nil {
-				// 	return err
-				// }
-
 				// write to file
 				err = utils.AppendLineToFile(
 					path.Join(initialStateDataDirectoryPath, chainHistoryFilename),
@@ -860,7 +854,7 @@ func loopConvert(
 				_, err = convert.ConvertStateDBDataV9ToV10(
 					key,
 					value,
-					"",
+					[]byte(""),
 					nil,
 					dbGet,
 					saveNewChainHistory,
@@ -950,6 +944,11 @@ var createInitialStateDataCmd = &cobra.Command{
 		viper.SetDefault("CHAIN_HISTORY_FILENAME", "chain_history")
 		viper.SetDefault("METADATA_FILENAME", "metadata")
 		viper.SetDefault("BLOCK_NUMBER", "")
+
+		viper.SetDefault("READ_BUFFER_SIZE", 100_000)
+
+		viper.SetDefault("GOLEVELDB_MAX_BATCH_BYTES", DefaultGoleveldbMaxBatchBytes)
+		viper.SetDefault("GOLEVELDB_WRITE_BUFFER_BYTES", DefaultGoleveldbWriteBufferBytes)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return createInitialStateData(args[0], args[1])
