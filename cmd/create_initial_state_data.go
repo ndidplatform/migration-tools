@@ -88,7 +88,7 @@ var (
 
 var (
 	DefaultGoleveldbWriteBufferBytes = 256 * opt.MiB
-	DefaultGoleveldbMaxBatchBytes    = 32 * opt.MiB
+	DefaultGoleveldbMaxBatchBytes    = 8 * opt.MiB
 
 	goleveldbWriteBufferBytes = DefaultGoleveldbWriteBufferBytes
 	goleveldbMaxBatchBytes    = DefaultGoleveldbMaxBatchBytes
@@ -945,7 +945,7 @@ var createInitialStateDataCmd = &cobra.Command{
 		viper.SetDefault("METADATA_FILENAME", "metadata")
 		viper.SetDefault("BLOCK_NUMBER", "")
 
-		viper.SetDefault("READ_BUFFER_SIZE", 100_000)
+		viper.SetDefault("READ_BUFFER_SIZE", 250_000)
 
 		viper.SetDefault("GOLEVELDB_MAX_BATCH_BYTES", DefaultGoleveldbMaxBatchBytes)
 		viper.SetDefault("GOLEVELDB_WRITE_BUFFER_BYTES", DefaultGoleveldbWriteBufferBytes)
