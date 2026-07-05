@@ -45,8 +45,8 @@ import (
 const tmpDirectoryName = "ndid_migrate"
 
 const (
-	initialStateDataTypeFile      = "file"
-	initialStateDataTypeGoLevelDB = "goleveldb"
+	initialStateDataTypeFile    = "file"
+	initialStateDataTypeLevelDB = "leveldb"
 )
 
 type ABCIDataVersion struct {
@@ -87,11 +87,11 @@ var (
 )
 
 var (
-	DefaultGoleveldbWriteBufferBytes = 256 * opt.MiB
-	DefaultGoleveldbMaxBatchBytes    = 8 * opt.MiB
+	DefaultLeveldbWriteBufferBytes = 256 * opt.MiB
+	DefaultLeveldbMaxBatchBytes    = 8 * opt.MiB
 
-	goleveldbWriteBufferBytes = DefaultGoleveldbWriteBufferBytes
-	goleveldbMaxBatchBytes    = DefaultGoleveldbMaxBatchBytes
+	leveldbWriteBufferBytes = DefaultLeveldbWriteBufferBytes
+	leveldbMaxBatchBytes    = DefaultLeveldbMaxBatchBytes
 )
 
 func contains(a string, list []string) bool {
@@ -144,12 +144,12 @@ func createInitialStateData(fromVersion string, toVersion string) (err error) {
 	initialStateDataType := viper.GetString("INITIAL_STATE_DATA_TYPE")
 	switch initialStateDataType {
 	case initialStateDataTypeFile:
-	case initialStateDataTypeGoLevelDB:
-		goleveldbWriteBufferBytes = viper.GetInt("GOLEVELDB_WRITE_BUFFER_BYTES")
-		goleveldbMaxBatchBytes = viper.GetInt("GOLEVELDB_MAX_BATCH_BYTES")
+	case initialStateDataTypeLevelDB:
+		leveldbWriteBufferBytes = viper.GetInt("LEVELDB_WRITE_BUFFER_BYTES")
+		leveldbMaxBatchBytes = viper.GetInt("LEVELDB_MAX_BATCH_BYTES")
 
-		log.Printf("goleveldb write buffer size: %d bytes\n", goleveldbWriteBufferBytes)
-		log.Printf("goleveldb max batch size: %d bytes\n", goleveldbMaxBatchBytes)
+		log.Printf("leveldb write buffer size: %d bytes\n", leveldbWriteBufferBytes)
+		log.Printf("leveldb max batch size: %d bytes\n", leveldbMaxBatchBytes)
 	default:
 		return errors.New("unsupported initial state data type")
 	}
@@ -292,14 +292,14 @@ func createInitStateDataSameVersion(
 
 		finalizeSaves = func() (err error) { return nil }
 
-	case initialStateDataTypeGoLevelDB:
-		// Write to DB (goleveldb)
-		log.Println("write to DB (goleveldb)")
+	case initialStateDataTypeLevelDB:
+		// Write to DB (leveldb)
+		log.Println("write to DB (leveldb)")
 
 		outputDb, err := leveldb.OpenFile(
 			path.Join(initialStateDataDirectoryPath, initialStateDataFilename+".db"),
 			&opt.Options{
-				WriteBuffer: goleveldbWriteBufferBytes,
+				WriteBuffer: leveldbWriteBufferBytes,
 			},
 		)
 		if err != nil {
@@ -342,7 +342,7 @@ func createInitStateDataSameVersion(
 			// Approximate memory footprint of this entry
 			recordSize := len(key) + len(value)
 
-			if batchBytes+recordSize > goleveldbMaxBatchBytes && batch.Len() > 0 {
+			if batchBytes+recordSize > leveldbMaxBatchBytes && batch.Len() > 0 {
 				err = outputDb.Write(batch, &opt.WriteOptions{
 					// Sync: true,
 				})
@@ -540,14 +540,14 @@ func loopConvert(
 
 			finalizeSaves = func() (err error) { return nil }
 
-		case initialStateDataTypeGoLevelDB:
-			// Write to DB (goleveldb)
-			log.Println("write to DB (goleveldb)")
+		case initialStateDataTypeLevelDB:
+			// Write to DB (leveldb)
+			log.Println("write to DB (leveldb)")
 
 			outputDb, err := leveldb.OpenFile(
 				path.Join(initialStateDataDirectoryPath, initialStateDataFilename+".db"),
 				&opt.Options{
-					WriteBuffer: goleveldbWriteBufferBytes,
+					WriteBuffer: leveldbWriteBufferBytes,
 				},
 			)
 			if err != nil {
@@ -590,7 +590,7 @@ func loopConvert(
 				// Approximate memory footprint of this entry
 				recordSize := len(key) + len(value)
 
-				if batchBytes+recordSize > goleveldbMaxBatchBytes && batch.Len() > 0 {
+				if batchBytes+recordSize > leveldbMaxBatchBytes && batch.Len() > 0 {
 					err = outputDb.Write(batch, &opt.WriteOptions{
 						// Sync: true,
 					})
@@ -938,7 +938,7 @@ var createInitialStateDataCmd = &cobra.Command{
 		viper.SetDefault("LOG_KEYS_WRITTEN", false)
 		viper.SetDefault("LOG_KEYS_WRITTEN_EVERY", 100000)
 		viper.SetDefault("INITIAL_STATE_DATA_DIR", "./_initial_state_data/")
-		viper.SetDefault("INITIAL_STATE_DATA_TYPE", "goleveldb") // "goleveldb", "file"
+		viper.SetDefault("INITIAL_STATE_DATA_TYPE", initialStateDataTypeLevelDB) // "leveldb", "file"
 		viper.SetDefault("INITIAL_STATE_DATA_FILENAME", "data")
 		viper.SetDefault("BACKUP_VALIDATORS_FILENAME", "validators")
 		viper.SetDefault("CHAIN_HISTORY_FILENAME", "chain_history")
@@ -947,8 +947,8 @@ var createInitialStateDataCmd = &cobra.Command{
 
 		viper.SetDefault("READ_BUFFER_SIZE", 250_000)
 
-		viper.SetDefault("GOLEVELDB_MAX_BATCH_BYTES", DefaultGoleveldbMaxBatchBytes)
-		viper.SetDefault("GOLEVELDB_WRITE_BUFFER_BYTES", DefaultGoleveldbWriteBufferBytes)
+		viper.SetDefault("LEVELDB_MAX_BATCH_BYTES", DefaultLeveldbMaxBatchBytes)
+		viper.SetDefault("LEVELDB_WRITE_BUFFER_BYTES", DefaultLeveldbWriteBufferBytes)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return createInitialStateData(args[0], args[1])

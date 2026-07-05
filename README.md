@@ -28,10 +28,10 @@ CGO_ENABLED=1 CGO_LDFLAGS="-lsnappy" go run -tags "cleveldb" main.go
 
 - `TM_HOME`: Source Tendermint home directory path
 - `ABCI_DB_DIR_PATH`: Source ABCI state DB directory path
-- `INITIAL_STATE_DATA_TYPE`: ABCI initial state data file type. Options are `goleveldb` and `file`. `goleveldb` will output as a database directory. `file` will output as a single file with JSON data format [Default: `goleveldb`]
-- `READ_BUFFER_SIZE`: Key-value read buffer size (number of keys) [Default: `100000`]
-- `GOLEVELDB_MAX_BATCH_BYTES`: Goleveldb write max batch size in bytes. (Only apply when `INITIAL_STATE_DATA_TYPE` is set to `goleveldb`) [Default: `33554432` (32 MB)]
-- `GOLEVELDB_WRITE_BUFFER_BYTES`: Goleveldb write buffer size in bytes. (Only apply when `INITIAL_STATE_DATA_TYPE` is set to `goleveldb`) [Default: `268435456` (256 MB)]
+- `INITIAL_STATE_DATA_TYPE`: ABCI initial state data file type. Options are `leveldb` and `file`. `leveldb` will output as a LevelDB database directory. `file` will output as a single file with JSON data format [Default: `leveldb`]
+- `READ_BUFFER_SIZE`: Key-value read buffer size (number of keys) [Default: `250000`]
+- `LEVELDB_MAX_BATCH_BYTES`: LevelDB write max batch size in bytes. (Only apply when `INITIAL_STATE_DATA_TYPE` is set to `leveldb`) [Default: `8388608` (8 MB)]
+- `LEVELDB_WRITE_BUFFER_BYTES`: LevelDB write buffer size in bytes. (Only apply when `INITIAL_STATE_DATA_TYPE` is set to `leveldb`) [Default: `268435456` (256 MB)]
 
 *Specific to `restore` command*
 
