@@ -383,6 +383,7 @@ func ConvertStateDBDataV9ToV10(
 		// Changes:
 		// - Add "Domain"
 		// - Add "RequesterNodeWhitelistEnabled"
+		// - Add "RequestTypeWhitelistEnabled"
 
 		var serviceDetailV9 didProtoV9.ServiceDetail
 		err := proto.Unmarshal(value, &serviceDetailV9)
@@ -401,6 +402,7 @@ func ConvertStateDBDataV9ToV10(
 			Active:                        serviceDetailV9.Active,
 			Domain:                        "",
 			RequesterNodeWhitelistEnabled: false,
+			RequestTypeWhitelistEnabled:   false,
 		}
 
 		serviceDetailV10Bytes, err := proto.DeterministicMarshal(&serviceDetailV10)
